@@ -664,7 +664,7 @@ var DEFAULT_PROFILES = [];
 // Core utilities: dates, money, escaping, DOM helpers, toasts, modals
 // ═══════════════════════════════════════════════════════════════════
 var APP_NAME = 'PayPilot';
-var APP_BUILD = 'v2026-10-29.2';
+var APP_BUILD = 'v2026-10-29.3';
 // Cloud sync worker (URL is not secret). The sync KEY is never stored in this file —
 // it is entered once per device in Settings and kept in that browser only.
 var CLOUD_DEFAULT_URL = 'https://paypilot.8pavii.workers.dev';
@@ -894,7 +894,7 @@ function xlsxDownload(sheets, name){
 var SYNC_KEYS = ['nwi_enquiries','nwi_resolved_enq','nwi_sa_customers','nwi_sa_meta','nwi_ar_customers','nwi_ar_meta',
   'nwi_contacts','nwi_chase_log','nwi_ptp','nwi_payments','nwi_snooze','nwi_daily_history','nwi_monthly_sales',
   'nwi_pay_base','nwi_pay_overrides','nwi_run_ticks','nwi_remits','nwi_stmts','nwi_settings','nwi_fc_snaps',
-  'nwi_replies','nwi_routine','nwi_milestones','nwi_audit','nwi_sent_ledger','nwi_partners','nwi_calls'];
+  'nwi_replies','nwi_routine','nwi_milestones','nwi_audit','nwi_sent_ledger','nwi_partners','nwi_calls','nwi_email_book'];
 // Device-only keys (never synced): cloud url/key, gmail grant, theme, ui prefs
 var DB = {
   _c: {},
@@ -1633,8 +1633,8 @@ async function importLedgerFile(file, kind){
   if(kind==='sa'){ res = isPdf? await parseSAPdf(file) : parseSAExcelRows(await sheetRows(file), file.name); DB.set('nwi_sa_customers',res.rows); DB.set('nwi_sa_meta',res.meta); }
   else { res = isPdf? await parseARPdf(file) : parseARExcelRows(await sheetRows(file), file.name);
     DB.set('nwi_ar_customers',res.rows); DB.set('nwi_ar_meta',res.meta);
-    // harvest emails into contact book (manual entries win)
-    var ct=contacts(), n=0; res.rows.forEach(function(r){ if(r.email && !ct[r.name.toLowerCase()]){ ct[r.name.toLowerCase()]=r.email; n++; } }); if(n) DB.set('nwi_contacts',ct);
+    // ledger emails are used as a fallback straight from the report (not copied into your edits,
+    // so the customer email list can take priority)
   }
   audit((kind==='sa'?'Summary Aging':'Aged Receivables')+' imported', file.name+' — '+res.rows.length+' rows');
   return res;
@@ -1643,6 +1643,7 @@ async function importLedgerFile(file, kind){
 async function detectLedgerKind(file){
   if(/\.pdf$/i.test(file.name)){ var t=(await pdfText(await readAsArrayBuffer(file))).slice(0,3000).toLowerCase(); if(/summary aging/.test(t)) return 'sa'; if(/aged accounts|aged receiv/.test(t)) return 'ar'; if(/statement/.test(t)) return 'stmt'; if(/remittance|payment advice/.test(t)) return 'remit'; if(/(invoice|document|ref)/.test(t) && /(outstanding|remaining|balance|debit)/.test(t)) return 'stmt'; return null; }
   var rows=await sheetRows(file); var head=rows.slice(0,40).map(function(r){ return r.map(cellStr).join(' '); }).join(' ').toLowerCase();
+  if(/customer email list|chase to|all email addresses/.test(head)) return 'emails';
   if(/payment types|mid & end month/.test(head)||/latest payment date/.test(head)) return 'terms';
   if(/summary aging/.test(head)) return 'sa';
   if(/aged accounts|aged receiv|not due|credit limit/.test(head)) return 'ar';
@@ -2123,16 +2124,37 @@ function stmtSummary(rep){
 // Keys and shapes are the same as CreditFlow so history carries over.
 // ═══════════════════════════════════════════════════════════════════
 function contacts(){ var c=DB.get('nwi_contacts',{}); return (c&&typeof c==='object')?c:{}; }
+// Address to chase: your own edit for this customer → the customer email list → the email on the ledger
 function contactFor(cust){
   var ct=contacts(); var k=(cust.name||'').toLowerCase();
-  return ct[k] || (cust.ar&&cust.ar.email) || '';
+  if(ct[k]) return ct[k];
+  var b=emailBookFor(cust); if(b && b.to) return b.to;
+  return (cust.ar&&cust.ar.email) || '';
+}
+// where the address came from, for the composer and Settings
+function contactSource(cust){
+  var ct=contacts(); if(ct[(cust.name||'').toLowerCase()]) return {src:'you', label:'edited by you'};
+  var b=emailBookFor(cust); if(b && b.to) return {src:'book', label:'customer email list'+(b.m?' ('+b.m+' match)':''), m:b.m, entry:b};
+  if(cust.ar&&cust.ar.email) return {src:'ledger', label:'Business Central'};
+  return {src:'', label:'no address on file'};
 }
 function saveContact(name, email){
-  if(!name||!email||email.indexOf('@')<0) return;
-  var ct=contacts(); ct[name.toLowerCase()]=email.trim(); DB.set('nwi_contacts',ct);
+  if(!name) return;
+  email=normEmails(email);
+  var ct=contacts(), k=name.toLowerCase(), c=custByName(name)||{name:name};
+  var b=emailBookFor(c), base=(b&&b.to)||(c.ar&&c.ar.email)||'';
+  // same as the list / ledger → nothing to remember; anything else is your edit
+  if(!email || normEmails(base)===email){ if(ct[k]){ delete ct[k]; DB.set('nwi_contacts',ct); } return; }
+  if(email.indexOf('@')<0) return;
+  if(ct[k]===email) return;
+  ct[k]=email; DB.set('nwi_contacts',ct);
 }
+function clearContact(name){ var ct=contacts(), k=String(name||'').toLowerCase(); if(ct[k]){ delete ct[k]; DB.set('nwi_contacts',ct); } }
+// "a@x.com, b@y.com ;c@z" → "a@x.com; b@y.com; c@z" (lower-case, no duplicates)
+function normEmails(s){ var seen={}, out=[]; (String(s||'').match(/[\w.+'&-]+@[\w-]+(\.[\w-]+)+/g)||[]).forEach(function(a){ a=a.toLowerCase(); if(!seen[a]){ seen[a]=1; out.push(a); } }); return out.join('; '); }
 function emailDomains(cust){
-  var e=contactFor(cust)+';'+((cust.ar&&cust.ar.email)||'');
+  var b=emailBookFor(cust);
+  var e=contactFor(cust)+';'+((cust.ar&&cust.ar.email)||'')+';'+(b?(b.all||[]).join(';'):'');
   var out={}; (e.match(/[\w.+'-]+@([\w-]+\.)+[\w-]+/g)||[]).forEach(function(a){ var d=a.split('@')[1].toLowerCase(); if(!GENERIC_DOMAINS.test(d)) out[d]=1; });
   return Object.keys(out);
 }
@@ -2222,6 +2244,153 @@ function replySince(name, since){ var r=replies()[name]; if(!r) return null; ret
 var DEFAULT_PARTNERS=['NEW WAY MIDDLE EAST FZE','AMAZON CUSTOMERS','BOXEDTECH LTD','NEW WAY B.V','MISCELLANEOUS','GLOBAL PHONE SOLUTIONS LLC','BACK MARKET','TIKTOK SHOP'];
 function partnerList(){ var p=DB.get('nwi_partners',null); return Array.isArray(p)?p:DEFAULT_PARTNERS; }
 function isPartner(name){ var n=String(name||'').toUpperCase(); return partnerList().some(function(p){ return p && n.indexOf(String(p).toUpperCase())>=0; }); }
+
+// ── 46-emailbook.js ──
+// ═══════════════════════════════════════════════════════════════════
+// CUSTOMER EMAIL LIST — every address per customer (from the Customer-Emails workbook,
+// or edited in Settings → Customer emails). Kept in your private synced data, never in the app code.
+//   nwi_email_book = {at, file, entries:{<normName>:{n, to, all[], acct[], people[], m}}}
+//   "to" = who a chase email goes to. Your own edits live in nwi_contacts and win.
+// ═══════════════════════════════════════════════════════════════════
+var _ebIdx=null, _ebGen=-1;
+function emailBook(){ var b=DB.get('nwi_email_book',null); return (b&&b.entries)?b:{entries:{}}; }
+function emailBookIndex(){
+  var g=typeof FC_GEN!=='undefined'?FC_GEN:0;
+  if(_ebIdx && _ebGen===g) return _ebIdx;
+  var e=emailBook().entries, list=[], dom={}, addr={};
+  Object.keys(e).forEach(function(k){
+    var x=e[k]; list.push({nn:k, x:x});
+    (x.all||[]).concat(splitEmails(x.to)).forEach(function(a){
+      (addr[a]=addr[a]||{})[x.n]=1;
+      var d=a.split('@')[1]; if(d && !GENERIC_DOMAINS.test(d)) (dom[d]=dom[d]||{})[x.n]=1;
+    });
+  });
+  _ebIdx={list:list, dom:dom, addr:addr}; _ebGen=g; return _ebIdx;
+}
+function splitEmails(s){ return normEmails(s).split('; ').filter(Boolean); }
+// The list entry for exactly this customer (same normalised name; a prefix only when it is the single candidate)
+function emailBookFor(c){
+  if(!c||!c.name) return null;
+  var e=emailBook().entries, n=normName(c.name);
+  if(e[n]) return e[n];
+  var idx=emailBookIndex(), pref=idx.list.filter(function(x){ return prefixRel(x.nn,n); });
+  return pref.length===1?pref[0].x:null;
+}
+// Addresses in "To" that the list says belong to a DIFFERENT customer
+function emailOwnershipWarnings(c, to){
+  var idx=emailBookIndex(), mine=normName(c.name), out=[];
+  splitEmails(to).forEach(function(a){
+    var owners=idx.addr[a]?Object.keys(idx.addr[a]):(idx.dom[a.split('@')[1]]?Object.keys(idx.dom[a.split('@')[1]]):[]);
+    if(!owners.length) return;
+    if(owners.some(function(o){ return normName(o)===mine || prefixRel(normName(o),mine); })) return;
+    out.push({a:a, owners:owners});
+  });
+  return out;
+}
+
+// ── import the Customer-Emails workbook (or any sheet with Customer + email columns) ──
+function parseEmailWorkbook(wb){
+  var entries={}, n=0;
+  wb.SheetNames.forEach(function(sn){
+    var rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:false});
+    var hr=-1; for(var i=0;i<Math.min(rows.length,10);i++){ var h=(rows[i]||[]).map(function(x){ return String(x||'').toLowerCase(); }); if(h.some(function(x){ return /^customer/.test(x); }) && h.some(function(x){ return /chase to|email/.test(x); })){ hr=i; break; } }
+    if(hr<0) return;
+    var H=rows[hr].map(function(x){ return String(x||'').toLowerCase().trim(); });
+    var col=function(re){ for(var i=0;i<H.length;i++) if(re.test(H[i])) return i; return -1; };
+    var iC=col(/^customer/), iTo=col(/chase to/), iAll=col(/all email/), iAcct=col(/accounts.team/), iPpl=col(/^people/), iM=col(/^match/), iE=col(/^email/), iT=col(/^type/);
+    // the "All addresses" sheet (one row per address) only adds to customers already read
+    var perAddress = iTo<0 && iAll<0 && iE>=0;
+    for(var r=hr+1;r<rows.length;r++){
+      var row=rows[r]||[], name=cleanName(row[iC]); if(!name || /not matched/i.test(name)) continue;
+      if(perAddress){
+        if(iT>=0 && /no.?reply|system/i.test(row[iT]||'')) continue;
+        name.split('|').map(function(x){ return x.trim(); }).filter(Boolean).forEach(function(nm){ var k=normName(nm); var a=normEmails(row[iE]); if(!k||!a||!entries[k]) return; var x=entries[k]; if(x.all.indexOf(a)<0) x.all.push(a); });
+        continue;
+      }
+      var k=normName(name); if(!k) continue;
+      var x=entries[k]||(entries[k]={n:name, to:'', all:[], acct:[], people:[], m:''});
+      x.to=normEmails(iTo>=0?row[iTo]:(iAll>=0?row[iAll]:row[iE]))||x.to;
+      splitEmails(iAll>=0?row[iAll]:'').concat(splitEmails(iE>=0?row[iE]:'')).forEach(function(a){ if(x.all.indexOf(a)<0) x.all.push(a); });
+      if(iAcct>=0) x.acct=splitEmails(row[iAcct]); if(iPpl>=0) x.people=splitEmails(row[iPpl]);
+      if(iM>=0) x.m=String(row[iM]||'').replace(/No email found/i,'').trim();
+      splitEmails(x.to).forEach(function(a){ if(x.all.indexOf(a)<0) x.all.push(a); });
+      n++;
+    }
+  });
+  if(n<5) throw new Error('That does not look like the customer email list (need a Customer column and a Chase To or Email column)');
+  return entries;
+}
+async function importEmailBook(file){
+  var ab=await readAsArrayBuffer(file);
+  var wb=XLSX.read(new Uint8Array(ab),{type:'array'});
+  var entries=parseEmailWorkbook(wb);
+  var prev=DB.get('nwi_email_book',null), prevCt=JSON.parse(JSON.stringify(contacts()));
+  DB.set('nwi_email_book',{at:new Date().toISOString(), file:file.name, entries:entries});
+  // addresses PayPilot copied from the ledger earlier are not your edits — let the list take over
+  var ct=contacts(), cleared=0, differ=[];
+  CUSTS.forEach(function(c){
+    var k=c.name.toLowerCase(); if(!ct[k]) return;
+    var b=emailBookFor(c); if(!b||!b.to) return;
+    var mine=normEmails(ct[k]);
+    if(mine===normEmails(b.to) || mine===normEmails((c.ar&&c.ar.email)||'')){ delete ct[k]; cleared++; }
+    else differ.push(c.name);
+  });
+  if(cleared) DB.set('nwi_contacts',ct);
+  audit('Customer email list imported', file.name+' — '+Object.keys(entries).length+' customers');
+  var withTo=Object.keys(entries).filter(function(k){ return entries[k].to; }).length;
+  var undo=function(){ if(prev) DB.set('nwi_email_book',prev); else DB.del('nwi_email_book'); DB.set('nwi_contacts',prevCt); rebuild(); renderAll(); toast('info','Email list import undone',''); };
+  if(differ.length){
+    setTimeout(function(){
+      openModal('Use the email list for these customers too?','<p class="muted">'+differ.length+' customer'+(differ.length===1?' has':'s have')+' an address you typed yourself that is different from the list. Keep yours, or switch them to the list?</p><div class="small" style="max-height:200px;overflow:auto">'+differ.map(function(n){ var c=custByName(n); return '<div><b>'+esc(n)+'</b> — yours: '+esc(contacts()[n.toLowerCase()]||'')+' · list: '+esc((emailBookFor(c)||{}).to||'')+'</div>'; }).join('')+'</div>',
+        {foot:'<button class="btn" onclick="closeModal()">Keep mine</button><button class="btn btn-p" id="eb-use">Use the list</button>'});
+      $('eb-use').onclick=function(){ var ct2=contacts(); differ.forEach(function(n){ delete ct2[n.toLowerCase()]; }); DB.set('nwi_contacts',ct2); closeModal(); rebuild(); renderAll(); toast('ok','Switched to the email list', differ.length+' customers'); };
+    }, 300);
+  }
+  return {customers:Object.keys(entries).length, withTo:withTo, undo:undo};
+}
+
+// ── Settings → Customer emails ──
+var EBF={q:'', only:'ledger'};
+function setEmails(){
+  var b=emailBook(), list=[];
+  if(EBF.only==='all'){ emailBookIndex().list.forEach(function(x){ var c=custByName(x.x.n); list.push({name:c?c.name:x.x.n, c:c, b:x.x}); }); CUSTS.forEach(function(c){ if(!emailBookFor(c)) list.push({name:c.name, c:c, b:null}); }); }
+  else CUSTS.forEach(function(c){ list.push({name:c.name, c:c, b:emailBookFor(c)}); });
+  var q=EBF.q.toLowerCase();
+  list=list.filter(function(x){
+    var to=x.c?contactFor(x.c):(x.b&&x.b.to)||'';
+    if(EBF.only==='none' && to) return false;
+    if(EBF.only==='edited' && !(x.c && contacts()[x.c.name.toLowerCase()])) return false;
+    if(EBF.only==='check' && !(x.b && /check/i.test(x.b.m||''))) return false;
+    return !q || x.name.toLowerCase().indexOf(q)>=0 || to.toLowerCase().indexOf(q)>=0;
+  }).sort(function(a,c2){ return a.name.localeCompare(c2.name); });
+  var nAll=CUSTS.length, nTo=CUSTS.filter(function(c){ return contactFor(c); }).length;
+  var h=card('Customer emails','Who each chase email goes to — filled in automatically when you draft',
+    (Object.keys(b.entries).length?'<div class="okbox" style="margin-bottom:10px">Email list: <b>'+esc(b.file||'')+'</b> · '+Object.keys(b.entries).length+' customers · imported '+fmtTime(b.at)+'. '+nTo+' of '+nAll+' customers on the ledger have an address.</div>':'<div class="warnbox" style="margin-bottom:10px">No customer email list yet. Import <b>Customer-Emails.xlsx</b> (or drop it on the page) and every chase email gets the right addresses automatically.</div>')+
+    '<div class="infobox small" style="margin-bottom:10px">Order used: <b>your edit</b> (here, in the customer panel or when you change “To” and send) → <b>the email list</b> → the email on the Aged Receivables report. Separate addresses with “;”. Clear a box to go back to the list.</div>'+
+    '<div class="row" style="margin-bottom:10px;flex-wrap:wrap"><input id="eb-q" style="width:260px" placeholder="Search customer or address…" value="'+esc(EBF.q)+'" oninput="EBF.q=this.value;setEmails()"><div class="seg">'+[['ledger','On the ledger'],['none','No address'],['check','Match = Check'],['edited','Edited by you'],['all','Whole list']].map(function(o){ return '<button class="'+(EBF.only===o[0]?'on':'')+'" onclick="EBF.only='+jsArg(o[0])+';setEmails()">'+o[1]+'</button>'; }).join('')+'</div><span class="spacer"></span><button class="btn btn-s" onclick="pickEmailBook()">Import email list</button><button class="btn btn-s" onclick="exportEmailBook()">Export</button></div>'+
+    '<div class="tbl-wrap tbl-scroll"><table class="tbl"><thead><tr><th>Customer</th><th style="min-width:300px">Chase emails go to</th><th>Other addresses on file</th><th>From</th><th></th></tr></thead><tbody>'+
+    list.slice(0,700).map(function(x){
+      var c=x.c, to=c?contactFor(c):(x.b&&x.b.to)||'', src=c?contactSource(c):{label:'email list (not on ledger)'};
+      var others=((x.b&&x.b.all)||[]).filter(function(a){ return splitEmails(to).indexOf(a)<0; });
+      return '<tr><td style="min-width:200px"><b>'+esc(x.name)+'</b>'+(c?'<div class="xs muted">'+esc(c.code)+'</div>':'')+'</td>'+
+        '<td>'+(c?'<input style="height:30px;width:100%" value="'+esc(to)+'" placeholder="name@company.com" onchange="ebSet('+jsArg(c.name)+',this.value)">':'<span class="small">'+esc(to)+'</span>')+'</td>'+
+        '<td class="small">'+(others.length?others.slice(0,6).map(function(a){ return c?'<button class="chip chip-btn" style="margin:1px" title="Add to “To”" onclick="ebAdd('+jsArg(c.name)+','+jsArg(a)+')">+ '+esc(a)+'</button>':esc(a); }).join(' ')+(others.length>6?' <span class="muted">+'+(others.length-6)+'</span>':''):'<span class="muted">—</span>')+'</td>'+
+        '<td class="small">'+esc(src.label)+'</td>'+
+        '<td>'+(c&&contacts()[c.name.toLowerCase()]?'<button class="btn btn-xs" onclick="clearContact('+jsArg(c.name)+');rebuild();setEmails()">Use list</button>':'')+'</td></tr>';
+    }).join('')+'</tbody></table></div>'+(list.length>700?'<div class="muted small">Showing 700 of '+list.length+' — search to narrow.</div>':'')+(list.length?'':'<div class="empty"><b>Nothing here</b></div>'));
+  setHTML('set-body',h);
+  var e=$('eb-q'); if(e && EBF.q){ e.focus(); e.setSelectionRange(EBF.q.length,EBF.q.length); }
+}
+function ebSet(name, val){ var v=normEmails(val); if(String(val||'').trim() && !v){ toast('warn','That is not an email address',val); return; } if(!v) clearContact(name); else saveContact(name, v); rebuild(); toast('ok','Saved', name+' → '+(contactFor(custByName(name)||{name:name})||'no address')); setEmails(); }
+function ebAdd(name, a){ var c=custByName(name); var cur=contactFor(c); saveContact(name, normEmails(cur+'; '+a)); rebuild(); setEmails(); }
+function pickEmailBook(){ var i=document.createElement('input'); i.type='file'; i.accept='.xlsx,.xls,.csv'; i.onchange=function(){ if(!i.files[0]) return; importEmailBook(i.files[0]).then(function(r){ rebuild(); toast('ok','Customer email list imported', r.withTo+' of '+r.customers+' customers have chase addresses', r.undo); if(SET_SEC==='emails') setEmails(); }).catch(function(e){ toast('err','Import failed', e.message); }); }; i.click(); }
+function exportEmailBook(){
+  var data=[['Customer','Code','Chase To','All email addresses','From']];
+  var seen={};
+  CUSTS.forEach(function(c){ var b=emailBookFor(c); if(b) seen[normName(b.n)]=1; data.push([c.name, c.code, contactFor(c), b?(b.all||[]).join('; '):'', contactSource(c).label]); });
+  emailBookIndex().list.forEach(function(x){ if(!seen[x.nn]) data.push([x.x.n, '', x.x.to, (x.x.all||[]).join('; '), 'email list (not on ledger)']); });
+  xlsxDownload([{name:'Customer emails', rows:data, cols:[42,10,50,70,24]}], 'PayPilot customer emails '+ymd(today())+'.xlsx');
+}
 
 // ── 50-model.js ──
 // ═══════════════════════════════════════════════════════════════════
@@ -2780,13 +2949,19 @@ function drawComposer(){
   if(c.queries&&c.queries.length) warn.push(c.queries.length+' open quer'+(c.queries.length>1?'ies':'y')+' ('+money(c.queryAmt,c.currency)+') — flagged in orange in the table.');
   var rep=replySince(c.name, lastChase(c.name)&&lastChase(c.name).date);
   if(rep) warn.push('They replied on '+fmtTime(rep.at)+': “'+esc((rep.snippet||'').slice(0,120))+'”');
-  var sugg={}; [contactFor(c)].concat(String((c.ar&&c.ar.email)||'').split(/[;,\s]+/)).forEach(function(e){ e=(e||'').trim(); if(e.indexOf('@')>0) sugg[e]=1; });
+  var sugg={}, inTo=splitEmails(EM.to), bk=emailBookFor(c);
+  splitEmails(contactFor(c)).concat(splitEmails((c.ar&&c.ar.email)||'')).concat(bk?(bk.all||[]):[]).forEach(function(e){ if(inTo.indexOf(e)<0) sugg[e]=1; });
+  var srcInfo=contactSource(c);
+  var own=emailOwnershipWarnings(c, EM.to);
+  own.forEach(function(w){ warn.unshift('<b>Check the address:</b> '+esc(w.a)+' belongs to <b>'+esc(w.owners.join(', '))+'</b> in your email list, not '+esc(c.name)+'.'); });
+  if(!EM.to) warn.unshift('No email address on file for '+esc(c.name)+'. Type one in “To” — it is remembered for next time.');
   var runOpts=composerRunOptions(c).map(function(r){ return '<option value="'+r.id+'"'+(run&&r.id===run.id?' selected':'')+'>'+(r.type==='WEEKLY'?'Weekly':r.type)+' · '+fmtDw(r.date)+'</option>'; }).join('');
   var lc=lastChase(c.name);
   var left='<div class="cmp-side">'+
     '<div class="cmp-cust"><div class="cmp-name">'+esc(c.name)+'</div><div class="muted small">'+esc(c.code)+' · '+esc(RUN_LABEL[c.run]||c.run)+' · '+esc(c.terms||c.profile.terms||'')+(lc?' · last chased '+relDays(new Date(lc.date)):' · never chased')+'</div></div>'+
     '<label class="fld"><span>To</span><input id="em-to" value="'+esc(EM.to)+'" placeholder="customer@company.com; second@company.com"></label>'+
-    (Object.keys(sugg).length?'<div class="chips">'+Object.keys(sugg).map(function(e){ return '<button class="chip chip-btn" onclick="emAddTo('+jsArg(e)+')">+ '+esc(e)+'</button>'; }).join('')+'</div>':'')+
+    '<div class="xs muted" style="margin:-4px 0 6px">'+(EM.to?(EM.toEdited?'Changed by you for ':'Addresses for ')+'<b>'+esc(c.name)+'</b>'+(EM.toEdited?'':' — from '+esc(srcInfo.label)):'')+'</div>'+
+    (Object.keys(sugg).length?'<div class="chips">'+Object.keys(sugg).slice(0,8).map(function(e){ return '<button class="chip chip-btn" onclick="emAddTo('+jsArg(e)+')" title="Also on file for '+esc(c.name)+'">+ '+esc(e)+'</button>'; }).join('')+'</div>':'')+
     '<label class="fld"><span>Cc</span><input id="em-cc" value="'+esc(EM.cc)+'"></label>'+
     '<label class="chk"><input type="checkbox" id="em-bcc" '+(EM.bcc?'checked':'')+' onchange="EM.bcc=this.checked"> Bcc '+esc(FINANCE_BCC)+'</label>'+
     '<div class="grid2"><label class="fld"><span>Payment run</span><select id="em-run" onchange="EM.run=getRunById(this.value);drawComposer()">'+runOpts+'</select></label>'+
@@ -2806,10 +2981,19 @@ function drawComposer(){
     '<button class="btn" onclick="emCopy()">Copy email</button>'+
     '<button class="btn" onclick="emMarkSent()" title="Log the chase without Gmail (e.g. you sent it from Outlook)">Mark as sent</button>'+
     '<button class="btn btn-p" onclick="emDraft()">Create Gmail draft</button>'});
-  ['em-to','em-cc'].forEach(function(id){ var e=$(id); if(e) e.oninput=function(){ EM[id==='em-to'?'to':'cc']=this.value; }; });
+  ['em-to','em-cc'].forEach(function(id){ var e=$(id); if(e) e.oninput=function(){ EM[id==='em-to'?'to':'cc']=this.value; if(id==='em-to'){ EM.toEdited=true; EM.ownOk=false; } }; });
+  var te=$('em-to'); if(te) te.onchange=function(){ EM.to=this.value; EM.toEdited=true; setTimeout(drawComposer,0); };
+}
+// a yes/no on top of the composer that does not close it
+function confirmBoxKeep(title, msg, onYes){
+  var ov=document.createElement('div'); ov.className='modal-wrap open'; ov.style.zIndex='95';
+  ov.innerHTML='<div class="modal" style="max-width:460px"><div class="modal-h"><h3>'+esc(title)+'</h3></div><div class="modal-b"><p class="muted" style="margin:0">'+esc(msg)+'</p></div><div class="modal-f"><button class="btn" data-a="no">Go back</button><button class="btn btn-p" data-a="yes">Yes, it is right</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('[data-a=no]').onclick=function(){ ov.remove(); };
+  ov.querySelector('[data-a=yes]').onclick=function(){ ov.remove(); onYes(); toast('info','OK — press the button again to continue',''); };
 }
 function emScope(v){ EM.scope=v; devSet('pp_em_scope',v); drawComposer(); }
-function emAddTo(e){ var cur=(EM.to||'').trim(); if(cur.toLowerCase().indexOf(e.toLowerCase())>=0) return; EM.to=cur?cur.replace(/[;,]\s*$/,'')+'; '+e:e; drawComposer(); }
+function emAddTo(e){ var cur=(EM.to||'').trim(); if(cur.toLowerCase().indexOf(e.toLowerCase())>=0) return; EM.to=cur?cur.replace(/[;,]\s*$/,'')+'; '+e:e; EM.toEdited=true; EM.ownOk=false; drawComposer(); }
 async function emStatement(file){
   if(!file||!EM) return;
   try{
@@ -2830,6 +3014,8 @@ function emChecks(){
   if(!EM) return false;
   EM.to=($('em-to')||{}).value||EM.to; EM.cc=($('em-cc')||{}).value||'';
   if(!EM.to||EM.to.indexOf('@')<0){ toast('warn','Add the customer’s email address first',''); return false; }
+  var own=emailOwnershipWarnings(EM.c, EM.to);
+  if(own.length && !EM.ownOk){ confirmBoxKeep('Wrong customer?', own.map(function(w){ return w.a+' is listed for '+w.owners.join(', '); }).join('. ')+'. You are emailing '+EM.c.name+'. Send to this address anyway?', function(){ EM.ownOk=true; }); return false; }
   saveContact(EM.c.name, EM.to);
   return true;
 }
@@ -3385,9 +3571,10 @@ async function importAny(files){
       var kind=await detectLedgerKind(f);
       if(kind==='sa'||kind==='ar'){ var r=await importLedgerFile(f, kind); did.push((kind==='sa'?'Summary Aging':'Aged Receivables')+' ('+r.rows.length+')'); }
       else if(kind==='terms'){ var n=await importProfilesWorkbook(f); did.push('Payment types ('+n+')'); }
+      else if(kind==='emails'){ var eb=await importEmailBook(f); did.push('Customer emails ('+eb.withTo+' of '+eb.customers+' customers have chase addresses)'); }
       else if(kind==='stmt'){ var sr=await importStatementGuess(f); did.push('Statement for '+sr.c.name+' — '+stmtSummary(sr.p.report)); }
       else if(kind==='remit'||/remit/i.test(f.name)){ remitFiles.push(f); }
-      else { var choice=await askKind(f); if(choice==='sa'||choice==='ar'){ var r2=await importLedgerFile(f,choice); did.push(f.name+' ('+r2.rows.length+')'); } else if(choice==='stmt'){ var sr2=await importStatementGuess(f); did.push('Statement for '+sr2.c.name+' — '+stmtSummary(sr2.p.report)); } else if(choice==='remit') remitFiles.push(f); }
+      else { var choice=await askKind(f); if(choice==='sa'||choice==='ar'){ var r2=await importLedgerFile(f,choice); did.push(f.name+' ('+r2.rows.length+')'); } else if(choice==='stmt'){ var sr2=await importStatementGuess(f); did.push('Statement for '+sr2.c.name+' — '+stmtSummary(sr2.p.report)); } else if(choice==='remit') remitFiles.push(f); else if(choice==='emails'){ var eb2=await importEmailBook(f); did.push('Customer emails ('+eb2.withTo+')'); } else if(choice==='terms'){ var n3=await importProfilesWorkbook(f); did.push('Payment types ('+n3+')'); } }
     }catch(e){ toast('err','Could not import '+f.name, e.message); }
   }
   if(remitFiles.length){ rebuild(); var n2=await importRemitFiles(remitFiles); did.push(n2+' remittance'+(n2===1?'':'s')); }
@@ -3398,7 +3585,7 @@ async function importAny(files){
 function askKind(f){
   return new Promise(function(res){
     openModal('What is “'+f.name+'”?','<p class="muted">PayPilot could not tell which report this is.</p><div class="row">'+
-      ['sa:Summary Aging','ar:Aged Receivables','stmt:Customer statement','remit:Remittance'].map(function(x){ var p=x.split(':'); return '<button class="btn" data-k="'+p[0]+'">'+p[1]+'</button>'; }).join('')+'</div>');
+      ['sa:Summary Aging','ar:Aged Receivables','stmt:Customer statement','remit:Remittance','emails:Customer email list','terms:Payment types workbook'].map(function(x){ var p=x.split(':'); return '<button class="btn" data-k="'+p[0]+'">'+p[1]+'</button>'; }).join('')+'</div>');
     qsa('#modal-body button[data-k]').forEach(function(b){ b.onclick=function(){ closeModal(); res(b.dataset.k); }; });
   });
 }
@@ -3847,7 +4034,7 @@ function drawDrawer(){
   h+='<div class="h4">Payment profile</div><div class="card" style="box-shadow:none"><div class="card-b">'+
     '<div class="grid2"><label class="fld"><span>Payment run</span><select id="pf-run">'+Object.keys(RUN_LABEL).map(function(k){ return '<option value="'+k+'"'+(c.run===k?' selected':'')+'>'+RUN_LABEL[k]+'</option>'; }).join('')+'</select></label>'+
     '<label class="fld"><span>Money lands</span><select id="pf-pay">'+Object.keys(PAY_LABEL).map(function(k){ return '<option value="'+k+'"'+(c.pay===k?' selected':'')+'>'+PAY_LABEL[k]+'</option>'; }).join('')+'</select></label></div>'+
-    '<div class="grid2"><label class="fld"><span>Terms</span><input id="pf-terms" value="'+esc(p.terms||'')+'" placeholder="e.g. 30DAYS"></label><label class="fld"><span>Email for chasing</span><input id="pf-mail" value="'+esc(contactFor(c))+'"></label></div>'+
+    '<div class="grid2"><label class="fld"><span>Terms</span><input id="pf-terms" value="'+esc(p.terms||'')+'" placeholder="e.g. 30DAYS"></label><label class="fld"><span>Email for chasing <span class="muted xs">('+esc(contactSource(c).label)+')</span></span><input id="pf-mail" value="'+esc(contactFor(c))+'"></label></div>'+
     '<label class="fld"><span>Note</span><input id="pf-note" value="'+esc(p.note||'')+'" placeholder="e.g. remit Tuesday, pays Thursday"></label>'+
     '<div class="muted xs" style="margin-bottom:8px">Source: '+esc(p.src)+(p.matched&&p.matched!==c.name?' (matched “'+esc(p.matched)+'”)':'')+(p.pattern?' · pattern check: '+esc(p.pattern):'')+(p.edited?' · <b>edited by you</b>':'')+'</div>'+
     '<div class="row"><button class="btn btn-p btn-s" onclick="saveProfileFromDrawer()">Save profile</button>'+(p.edited?'<button class="btn btn-s" onclick="clearOverride(custByName(DRAWER));rebuild();drawDrawer();renderTab()">Reset to workbook</button>':'')+'</div></div></div>';
@@ -3859,7 +4046,7 @@ function saveProfileFromDrawer(){
   var patch={run:$('pf-run').value, pay:$('pf-pay').value, t:$('pf-terms').value.trim().toUpperCase(), note:$('pf-note').value.trim()};
   var p=c.profile; if(patch.run===p.run && patch.pay===p.pay && patch.t===(p.terms||'') && patch.note===(p.note||'')) patch={};
   if(Object.keys(patch).length) setOverride(c, patch);
-  var m=$('pf-mail').value.trim(); if(m && m!==contactFor(c)) saveContact(c.name, m);
+  var m=$('pf-mail').value.trim(); if(normEmails(m)!==normEmails(contactFor(c))){ if(m) saveContact(c.name, m); else clearContact(c.name); }
   rebuild(); drawDrawer(); renderTab(); toast('ok','Saved', c.name);
 }
 function stmtUploadFor(name){
@@ -4440,10 +4627,10 @@ function exportHistory(){
 var SET_SEC='data', PF={q:'', only:'ledger'};
 function renderSettings(){
   rebuildIfNeeded();
-  var secs=[['data','Import data'],['terms','Payment terms'],['runs','Runs & calendar'],['email','Email template'],['gmail','Gmail'],['cloud','Cloud sync & sharing'],['kpi','Forecast & KPIs'],['backup','Backup & audit'],['manual','Desk manual']];
+  var secs=[['data','Import data'],['terms','Payment types'],['emails','Customer emails'],['runs','Runs & calendar'],['email','Email template'],['gmail','Gmail'],['cloud','Cloud sync & sharing'],['kpi','Forecast & KPIs'],['backup','Backup & audit'],['manual','Desk manual']];
   var h='<div class="row" style="margin-bottom:16px"><div class="seg" style="flex-wrap:wrap">'+secs.map(function(s){ return '<button class="'+(SET_SEC===s[0]?'on':'')+'" onclick="SET_SEC='+jsArg(s[0])+';renderSettings()">'+s[1]+'</button>'; }).join('')+'</div></div><div id="set-body"></div>';
   $('p-settings').innerHTML=h;
-  ({data:setData, terms:setTerms, runs:setRuns, email:setEmail, gmail:setGmail, cloud:setCloud, kpi:setKpi, backup:setBackup, manual:setManual}[SET_SEC]||setData)();
+  ({data:setData, terms:setTerms, emails:setEmails, runs:setRuns, email:setEmail, gmail:setGmail, cloud:setCloud, kpi:setKpi, backup:setBackup, manual:setManual}[SET_SEC]||setData)();
 }
 function card(title, sub, body, acts){ return '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>'+title+'</h3>'+(sub?'<span class="muted">'+sub+'</span>':'')+(acts?'<div class="acts">'+acts+'</div>':'')+'</div><div class="card-b">'+body+'</div></div>'; }
 function setData(){
@@ -4452,12 +4639,13 @@ function setData(){
   var line=function(lbl, m, n, extra){ return '<tr><td><b>'+lbl+'</b></td><td>'+(m.at?esc(m.file||'')+'<div class="xs muted">imported '+fmtTime(m.at)+(m.asOf?' · as at '+fmtD(fromYMD(m.asOf)):'')+'</div>':'<span class="muted">not imported</span>')+'</td><td class="r">'+(n||0)+'</td><td class="small">'+(extra||'')+'</td></tr>'; };
   var lbls=(sm.labels||[]).map(function(l){ return '<span class="pill pill-mute" style="margin:1px">'+esc(l)+'</span>'; }).join(' ');
   var h=card('Import from Business Central','Excel is best — PDF also works. Drop several files at once; PayPilot works out which is which.',
-    '<div class="drop" onclick="$(\'file-any\').click()" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="event.preventDefault();this.classList.remove(\'over\');importAny(event.dataTransfer.files)"><b>Drop files here or click to choose</b><div class="muted small">Customer – Summary Aging · Aged Accounts Receivable · customer statements · remittances · Customer Payment Types workbook</div></div>'+
+    '<div class="drop" onclick="$(\'file-any\').click()" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="event.preventDefault();this.classList.remove(\'over\');importAny(event.dataTransfer.files)"><b>Drop files here or click to choose</b><div class="muted small">Customer – Summary Aging · Aged Accounts Receivable · customer statements · remittances · Customer Payment Types workbook · Customer-Emails workbook</div></div>'+
     '<div class="tbl-wrap"><table class="tbl" style="margin-top:8px"><thead><tr><th>Report</th><th>Latest file</th><th class="r">Rows</th><th>Notes</th></tr></thead><tbody>'+
     line('Summary Aging', sm, (DB.get('nwi_sa_customers',[])||[]).length, sm.at?(sm.dated===false?'<span class="amt-warn">Bucket dates not readable — using Before / 2 past weeks / this week / After</span>':'Buckets: '+lbls):'Run with weekly periods; the due-date columns drive the runs and forecast')+
     line('Aged Receivables', am, (DB.get('nwi_ar_customers',[])||[]).length, 'Balance, not due, credit limit, terms, email, last payment')+
     '<tr><td><b>Statements</b></td><td>'+nst+' customers on file</td><td class="r">'+sum(Object.keys(stm),function(k){ return (stm[k].items||[]).length; })+'</td><td class="small">Invoice-level detail for emails and the forecast. Drop them in the chase email or here.</td></tr>'+
-    '<tr><td><b>Payment types</b></td><td>'+(hasProfiles()?'Customer Payment Types workbook':'<span class="amt-bad">Not imported yet — drop Customer_Payment_Types_2026.xlsx here</span>')+'</td><td class="r">'+profileBase().length+'</td><td class="small">Who pays mid-month, month-end, weekly or in advance — edit under Payment terms</td></tr>'+
+    '<tr><td><b>Payment types</b></td><td>'+(hasProfiles()?'Customer Payment Types workbook':'<span class="amt-bad">Not imported yet — drop Customer_Payment_Types_2026.xlsx here</span>')+'</td><td class="r">'+profileBase().length+'</td><td class="small">Who pays mid-month, month-end, weekly or in advance — edit under Payment types</td></tr>'+
+    '<tr><td><b>Customer emails</b></td><td>'+(Object.keys(emailBook().entries).length?esc(emailBook().file||'Customer email list')+'<div class="xs muted">imported '+fmtTime(emailBook().at)+'</div>':'<span class="amt-warn">Not imported yet — drop Customer-Emails.xlsx here</span>')+'</td><td class="r">'+Object.keys(emailBook().entries).length+'</td><td class="small">Who each chase email goes to — edit under Customer emails</td></tr>'+
     '</tbody></table></div>');
   h+=card('Daily routine for imports','',
     '<ol class="small" style="line-height:1.8;margin:0;padding-left:18px"><li>Business Central → <b>Customer – Summary Aging</b>: starting date = Monday two weeks ago, period length <b>1W</b>, then <b>Open in Excel</b>.</li><li>Business Central → <b>Aged Accounts Receivable</b>: aged as of today, aging by <b>Due Date</b>, then <b>Open in Excel</b>.</li><li>Drop both files onto PayPilot. Statements: export per customer when you chase — drop it into the email.</li></ol>');
@@ -4471,7 +4659,7 @@ function setTerms(){
   var q=PF.q.toLowerCase();
   list=list.filter(function(x){ if(PF.only==='edited' && !x.p.edited) return false; return !q || x.name.toLowerCase().indexOf(q)>=0; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
   var counts={}; CUSTS.forEach(function(c){ counts[c.run]=(counts[c.run]||0)+1; });
-  var h=card('Payment terms &amp; runs','Changes save instantly and sync to your other devices',
+  var h=card('Payment types','Who pays when — changes save instantly and sync to your other devices. Edits stay when you import an updated workbook.',
     '<div class="row" style="margin-bottom:10px">'+Object.keys(RUN_LABEL).map(function(k){ return '<span class="pill pill-brand">'+RUN_LABEL[k]+': '+(counts[k]||0)+'</span>'; }).join('')+'</div>'+
     '<div class="infobox" style="margin-bottom:12px"><b>Rules used:</b> Mid &amp; End Month tab → both runs, money on the run date · 14/15-day payers → both runs · 21-day → both runs, money on due date · 30/45/60/90/120-day → month-end run, money on due date · 1–10 days → weekly · ADV → advance. Mid-month = the '+ordinal(settings().midDay)+'; month-end = last working day.</div>'+
     '<div class="row" style="margin-bottom:10px"><input style="width:260px" placeholder="Search customer…" value="'+esc(PF.q)+'" oninput="PF.q=this.value;setTerms();var e=$(\'pf-q\');" id="pf-q"><div class="seg">'+[['ledger','On the ledger'],['edited','Edited by you'],['all','Whole workbook']].map(function(o){ return '<button class="'+(PF.only===o[0]?'on':'')+'" onclick="PF.only='+jsArg(o[0])+';setTerms()">'+o[1]+'</button>'; }).join('')+'</div><span class="spacer"></span><button class="btn btn-s" onclick="pickWorkbook()">Import updated workbook</button><button class="btn btn-s" onclick="exportProfiles()">Export</button></div>'+
