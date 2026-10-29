@@ -520,6 +520,77 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand);cursor:poi
 .content{max-width:none}
 .glance .gl,.glance .gs{white-space:normal;overflow:visible;text-overflow:clip}
 .glance .gs{line-height:1.35}
+
+/* ── v5 fixes: drawer close, filters wrap, sidebar scroll, narrow nav ── */
+.drawer-h::after{pointer-events:none;z-index:0}
+.drawer .x{position:relative;z-index:3;flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;padding:0;box-sizing:border-box}
+.drawer .x:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.drawer-bg{position:fixed;inset:0;background:rgba(22,18,59,.28);z-index:59;opacity:0;pointer-events:none;transition:opacity .25s}
+.drawer-bg.open{opacity:1;pointer-events:auto}
+.tbl tbody tr:has(.cname){cursor:pointer}
+.seg{flex-wrap:wrap;overflow:visible;max-width:100%}
+.seg button{white-space:nowrap}
+.card-h{flex-wrap:wrap;row-gap:8px}
+.card-h .acts{margin-left:auto}
+.side{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.side .nav{flex:none}
+.side-foot{flex:none}
+@media (max-height:700px) and (min-width:901px){
+  .side{padding:12px 12px;gap:2px} .brand{margin-bottom:6px} .nav button{padding:7px 10px} .nav .nav-sec{margin:6px 0 2px;padding-top:0}
+}
+.tbl-wrap{max-width:100%;overflow-x:auto}
+.panel{min-width:0}
+.main{min-width:0}
+@media (max-width:900px){
+  .side{flex-direction:column;align-items:stretch;overflow:visible;padding:8px 10px 6px;gap:6px;position:sticky;top:0}
+  .brand{display:none}
+  .nav{display:grid!important;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;width:100%}
+  .nav button{flex-direction:column;justify-content:center;gap:3px;padding:6px 2px!important;font-size:11px!important;white-space:normal;text-align:center;min-width:0;position:relative}
+  .nav button span.lbl{display:none!important}
+  .nav button::after{content:attr(data-short);font-size:11px;font-weight:700;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+  .nav button svg{width:18px;height:18px}
+  .nav button .badge{position:absolute;top:2px;right:4px;margin:0;font-size:10px;min-width:16px;height:16px;padding:0 4px}
+  .side-foot{display:flex!important;flex-direction:row;flex-wrap:wrap;gap:6px;padding:0;border:none;margin:0}
+  .side-foot .build{display:none}
+  .side-foot .chip{font-size:11.5px;padding:4px 9px}
+  .top{gap:8px}
+  .top h1{font-size:20px}
+  .top .page-desc{display:none}
+}
+@media (max-width:600px){
+  .nav{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .side{position:static}
+  .top .btn{flex:1}
+  .kpis{grid-template-columns:1fr 1fr!important}
+  .facts{grid-template-columns:1fr 1fr}
+  .drawer{width:100vw}
+}
+/* ticked-off section on runs */
+.done-sec{margin-top:14px;border-top:1px dashed var(--line)}
+.done-sec>summary{cursor:pointer;list-style:none;padding:10px 16px;font-weight:700;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.done-sec>summary::-webkit-details-marker{display:none}
+.done-sec>summary::before{content:"▸";transition:transform .2s;display:inline-block}
+.done-sec[open]>summary::before{transform:rotate(90deg)}
+.done-sec tr td{opacity:.75}
+.done-sec tr td:first-child{opacity:1}
+.toast .undo{all:unset;cursor:pointer;font-weight:800;text-decoration:underline;margin-left:8px}
+/* remittances v5 */
+.rm-list{display:flex;flex-direction:column;gap:10px}
+.rm{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 14px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.2fr) auto;gap:10px 16px;align-items:center}
+.rm .who{min-width:0}
+.rm .who b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm .amt{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.rm .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.rm.st-confirmed{border-left:4px solid var(--ok)}
+.rm.st-new{border-left:4px solid var(--warn)}
+.rm.st-unmatched{border-left:4px solid var(--bad)}
+.rm.st-banked{border-left:4px solid var(--info)}
+.rm .sugg{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rm .sugg .chip{font-size:12px}
+@media (max-width:900px){ .rm{grid-template-columns:1fr 1fr} .rm .acts{grid-column:1/-1;justify-content:flex-start} }
+@media (max-width:600px){ .rm{grid-template-columns:1fr} }
+.stmt-sum{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;margin:6px 0}
+.stmt-sum b{font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -531,16 +602,16 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand);cursor:poi
     </div>
     <nav class="nav" id="nav">
       <div class="nav-sec">Daily work</div>
-      <button data-tab="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span class="lbl">Today</span><span class="badge hide" id="b-today"></span></button>
-      <button data-tab="runs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg><span class="lbl">Payment runs</span><span class="badge hide" id="b-runs"></span></button>
-      <button data-tab="remits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg><span class="lbl">Remittances</span><span class="badge hide" id="b-remits"></span></button>
-      <button data-tab="queries"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4M12 14h.01"/></svg><span class="lbl">Queries</span><span class="badge hide" id="b-queries"></span></button>
+      <button data-tab="today" data-short="Today" title="Today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span class="lbl">Today</span><span class="badge hide" id="b-today"></span></button>
+      <button data-tab="runs" data-short="Runs" title="Runs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg><span class="lbl">Payment runs</span><span class="badge hide" id="b-runs"></span></button>
+      <button data-tab="remits" data-short="Remits" title="Remits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg><span class="lbl">Remittances</span><span class="badge hide" id="b-remits"></span></button>
+      <button data-tab="queries" data-short="Queries" title="Queries"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4M12 14h.01"/></svg><span class="lbl">Queries</span><span class="badge hide" id="b-queries"></span></button>
       <div class="nav-sec">Insight</div>
-      <button data-tab="customers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="lbl">Customers</span></button>
-      <button data-tab="forecast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg><span class="lbl">Cash forecast</span></button>
-      <button data-tab="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg><span class="lbl">Reports</span></button>
+      <button data-tab="customers" data-short="Customers" title="Customers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="lbl">Customers</span></button>
+      <button data-tab="forecast" data-short="Forecast" title="Forecast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg><span class="lbl">Cash forecast</span></button>
+      <button data-tab="reports" data-short="Reports" title="Reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg><span class="lbl">Reports</span></button>
       <div class="nav-sec">&nbsp;</div>
-      <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="lbl">Data &amp; settings</span></button>
+      <button data-tab="settings" data-short="Settings" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="lbl">Data &amp; settings</span></button>
     </nav>
     <div class="side-foot">
       <button class="chip" id="sync-chip" onclick="Cloud.sync(true)" title="Sync now"><span class="dot" id="sync-dot"></span><span id="sync-txt">Sync</span></button>
@@ -573,7 +644,8 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand);cursor:poi
     </div>
   </main>
 </div>
-<div class="drawer" id="drawer"><div class="drawer-h" id="drawer-h"></div><div class="drawer-b" id="drawer-b"></div></div>
+<div class="drawer-bg" id="drawer-bg" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title"><div class="drawer-h" id="drawer-h"></div><div class="drawer-b" id="drawer-b"></div></div>
 <div class="modal-wrap" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-h"><h3 id="modal-title"></h3><button class="btn btn-ghost btn-s" style="margin-left:auto" onclick="closeModal()">✕</button></div><div class="modal-b" id="modal-body"></div><div class="modal-f" id="modal-foot"></div></div></div>
 <div id="toasts" aria-live="polite"></div>
 <div id="dropzone"><div class="dz-ico">⬇</div>Drop to import<div class="small" style="font-weight:600;color:var(--ink2)">Summary Aging · Aged Receivables · statements · remittances — <span class="ftag pdf">PDF</span> or <span class="ftag xls">Excel</span></div></div>
@@ -592,7 +664,7 @@ var DEFAULT_PROFILES = [];
 // Core utilities: dates, money, escaping, DOM helpers, toasts, modals
 // ═══════════════════════════════════════════════════════════════════
 var APP_NAME = 'PayPilot';
-var APP_BUILD = 'v2026-10-27.5';
+var APP_BUILD = 'v2026-10-29.1';
 // Cloud sync worker (URL is not secret). The sync KEY is never stored in this file —
 // it is entered once per device in Settings and kept in that browser only.
 var CLOUD_DEFAULT_URL = 'https://paypilot.8pavii.workers.dev';
@@ -836,7 +908,7 @@ var DB = {
     return out;
   },
   set: function(k, val, opts){
-    this._c[k]=val;
+    this._c[k]=val; if(typeof FC_GEN!=='undefined') FC_GEN++;
     var s=(typeof val==='string')?val:JSON.stringify(val);
     try{ localStorage.setItem(k,s); }catch(e){ /* quota — IDB still has it */ }
     idbSet(k,s);
@@ -848,7 +920,7 @@ var DB = {
   del: function(k){ delete this._c[k]; try{ localStorage.removeItem(k); }catch(e){} idbDel(k); },
   meta: function(){ try{ return JSON.parse(localStorage.getItem('pp_meta')||'{}'); }catch(e){ return {}; } },
   _saveMeta: function(m){ try{ localStorage.setItem('pp_meta', JSON.stringify(m)); }catch(e){} idbSet('pp_meta', JSON.stringify(m)); },
-  invalidate: function(){ this._c={}; }
+  invalidate: function(){ this._c={}; if(typeof FC_GEN!=='undefined') FC_GEN++; }
 };
 // another tab of PayPilot changed something → drop our cached copy and redraw
 window.addEventListener('storage', function(e){ if(!e.key) { DB.invalidate(); } else if(e.key in DB._c){ delete DB._c[e.key]; } if(e.key && e.key.indexOf('nwi_')===0 && typeof renderAll==='function'){ clearTimeout(DB._st); DB._st=setTimeout(function(){ rebuild(); renderAll(); },300); } });
@@ -899,7 +971,13 @@ var DEFAULT_SETTINGS = {
   fx: {EUR: 0.87, USD: 0.75}, managerEmail: '', managerName: '', bcc: true, signature: 'Pavi',
   template: null, remitLabel: 'Remits', remitDays: 45, gmailMode: 'popup', hols: null, monthlySales: 0
 };
+var _setMemo=null;
 function settings(){
+  var g=typeof FC_GEN!=='undefined'?FC_GEN:0;
+  if(_setMemo && _setMemo.g===g) return Object.assign({}, _setMemo.v);
+  var v=settingsNow(); _setMemo={g:g, v:v}; return Object.assign({}, v);
+}
+function settingsNow(){
   var s=DB.get('nwi_settings',{}); if(!s||typeof s!=='object') s={};
   var out={}; for(var k in DEFAULT_SETTINGS) out[k]=(s[k]!==undefined&&s[k]!==null)?s[k]:DEFAULT_SETTINGS[k];
   if(!out.fx||typeof out.fx!=='object') out.fx=DEFAULT_SETTINGS.fx;
@@ -1061,9 +1139,16 @@ function runsBetween(from,to){
 }
 function runTypesFor(run){ return run==='BOTH'?['MID','EOM']:run==='MID'?['MID']:run==='EOM'?['EOM']:[]; }
 // Next run of the given types on/after a date
+var _nrMemo={}, _nrGen=-1;
 function nextRunOnOrAfter(d, types){
   d=toDate(d);
   if(!types||!types.length) return null;
+  var g=typeof FC_GEN!=='undefined'?FC_GEN:0; if(g!==_nrGen){ _nrMemo={}; _nrGen=g; }
+  var key=ymd(d)+'|'+types.join(',');
+  if(key in _nrMemo) return _nrMemo[key];
+  return (_nrMemo[key]=nextRunOnOrAfterNow(d, types));
+}
+function nextRunOnOrAfterNow(d, types){
   var rs=runsBetween(addDays(d,-1), addDays(d,75));
   for(var i=0;i<rs.length;i++){ if(rs[i].date>=d && types.indexOf(rs[i].type)>=0) return rs[i]; }
   return null;
@@ -1194,7 +1279,7 @@ function importProfilesWorkbook(file){
 function sheetRows(file){
   return readAsArrayBuffer(file).then(function(ab){
     if(typeof XLSX==='undefined') throw new Error('Excel library not loaded — check your connection');
-    var wb=XLSX.read(new Uint8Array(ab),{type:'array',cellDates:true});
+    var wb=/\.csv$/i.test(file.name||'')?XLSX.read(new Uint8Array(ab),{type:'array',raw:true}):XLSX.read(new Uint8Array(ab),{type:'array',cellDates:true});
     var ws=wb.Sheets[wb.SheetNames[0]];
     return XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
   });
@@ -1351,10 +1436,13 @@ function saOverdueOf(r, asOf){
   return s;
 }
 
+// pdf.js hands the bytes to its worker and empties the buffer it was given, so always give it a copy —
+// the original is still needed afterwards (to save the statement and attach it to the email).
+function pdfBytes(ab){ var u=ab instanceof Uint8Array?ab:new Uint8Array(ab); return u.slice(0); }
 // ── SUMMARY AGING (PDF) ──
 async function pdfRows(ab, pageFilter){
   if(typeof pdfjsLib==='undefined') throw new Error('PDF library not loaded — check your connection');
-  var pdf=await pdfjsLib.getDocument({data:new Uint8Array(ab)}).promise; var pages=[];
+  var pdf=await pdfjsLib.getDocument({data:pdfBytes(ab)}).promise; var pages=[];
   for(var pn=1;pn<=pdf.numPages;pn++){
     if(pageFilter&&!pageFilter(pn)) continue;
     var page=await pdf.getPage(pn), tc=await page.getTextContent();
@@ -1368,7 +1456,7 @@ async function pdfRows(ab, pageFilter){
 }
 async function pdfText(ab){
   if(typeof pdfjsLib==='undefined') throw new Error('PDF library not loaded');
-  var pdf=await pdfjsLib.getDocument({data:new Uint8Array(ab)}).promise, out=[];
+  var pdf=await pdfjsLib.getDocument({data:pdfBytes(ab)}).promise, out=[];
   for(var i=1;i<=pdf.numPages;i++){
     var p=await pdf.getPage(i), tc=await p.getTextContent();
     // keep line breaks: group by y
@@ -1504,84 +1592,36 @@ async function parseARPdf(file){
   return {rows:out, meta:{file:file.name, at:new Date().toISOString(), asOf:ymd(today()), kind:'pdf'}};
 }
 
-// ── CUSTOMER STATEMENT (Excel or PDF) → [{doc, ext, type, inv, due, amt}] ──
-function isCreditDoc(t){ return /credit\s*(memo|note)|payment|refund/i.test(t||''); }
-function parseStatementRows(rows){
-  var hr=-1;
-  for(var i=0;i<Math.min(rows.length,40);i++){
-    var line=(rows[i]||[]).map(function(x){ return cellStr(x).toLowerCase(); }).join('|');
-    if((line.indexOf('invoice')>=0||line.indexOf('document')>=0) && (line.indexOf('outstanding')>=0||line.indexOf('remaining')>=0||line.indexOf('amount')>=0||line.indexOf('due')>=0||line.indexOf('balance')>=0)){ hr=i; break; }
-  }
-  if(hr<0) throw new Error('Statement: header row not found (need Document/Invoice and Amount/Due columns)');
-  var H=rows[hr].map(function(x){ return cellStr(x).toLowerCase(); });
-  var iDoc=colFind(H,['document no.','invoice no.','document no','invoice no','invoice number','document number','invoice','document'],/type|date|external/);
-  var iType=colFind(H,['document type','doc type','type']);
-  var iInv=colFind(H,['posting date','document date','invoice date','date'],/due/);
-  var iExt=colFind(H,['external document no.','external doc','your ref','your reference','reference','po']);
-  var iDue=colFind(H,['due date','due']);
-  var iOut=colFind(H,['remaining amount','outstanding amount','remaining','outstanding','open amount','balance']);
-  var iAmt=colFind(H,['amount','original amount','debit']);
-  var data=[];
-  for(var r=hr+1;r<rows.length;r++){ var row=rows[r]||[]; var d=cellStr(row[iDoc]); if(!d||/total|amount in words|aging|balance/i.test(d)) continue; data.push(row); }
-  if(iDue>=0) iDue=bindCol(data,iDue,'date'); if(iOut>=0) iOut=bindCol(data,iOut,'num');
+// ── CUSTOMER STATEMENT — parsing lives in 41-statement.js ──
+// Which customer is a statement for? Account code wins; names are matched outside our own letterhead.
+function statementCandidates(text, fileName){
+  var own=/NEW WAY|NEWWAY/;
+  var hay=' '+normName(text+' '+(fileName||'').replace(/\.[a-z]+$/i,'').replace(/[_\-]+/g,' '))+' ';
   var out=[];
-  data.forEach(function(row){
-    var type=iType>=0?cellStr(row[iType])||'Invoice':'Invoice';
-    var amt=iOut>=0?num(row[iOut]):num(row[iAmt]);
-    if(!amt) return;
-    if(isCreditDoc(type)) amt=-Math.abs(amt);
-    var due=iDue>=0?toDate(row[iDue]):null, inv=iInv>=0?toDate(row[iInv]):null;
-    out.push({doc:cellStr(row[iDoc]), ext:iExt>=0?cellStr(row[iExt]):'', type:type, inv:inv?ymd(inv):'', due:due?ymd(due):'', amt:round2(amt)});
+  CUSTS.forEach(function(c){
+    var sc=0;
+    var code=(c.code||'').replace(/[^A-Z0-9]/gi,'');
+    if(code.length>=4 && new RegExp('(^|[^A-Z0-9])'+code+'($|[^A-Z0-9])','i').test(text+' '+(fileName||''))) sc=1000+code.length;
+    var n=normName(c.name);
+    if(!sc && n.length>=5 && hay.indexOf(' '+n+' ')>=0 && !(own.test(n) && !c.partner)) sc=n.length*(c.partner?0.5:1);
+    if(sc) out.push({c:c, s:sc});
   });
-  if(!out.length) throw new Error('Statement: no open items found');
-  return out;
-}
-async function parseStatementPdf(ab){
-  var pages=await pdfRows(ab), all=[]; pages.forEach(function(p){ all=all.concat(p.rows); });
-  var INV=/^17\d{2,12}$/, DOCF=/^[A-Z]{1,5}[_\-]?\d{4,10}$/, EXT=/^(CP|PO)[A-Z0-9\-]*\d+$|^0\d{4,}$/i, DT=/^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}$/, AMT=/^-?[\d,]+\.\d{2}-?$/;
-  var out=[];
-  all.forEach(function(row){
-    var c=row.cells; if(c.length<4) return;
-    var ii=c.findIndex(function(x){ return INV.test(x); }); if(ii<0) ii=c.findIndex(function(x){ return DOCF.test(x); }); if(ii<0) return;
-    var dates=c.map(function(x,i){ return {x:x,i:i}; }).filter(function(o){ return o.i!==ii && DT.test(o.x); });
-    if(!dates.length) return;
-    var due=toDate(dates[dates.length-1].x), inv=dates.length>1?toDate(dates[0].x):null;
-    var amts=c.filter(function(x){ return AMT.test(x); }).map(num); if(!amts.length) return;
-    var ti=c.findIndex(function(x){ return /^(Invoice|Credit Memo|Payment|Refund|Finance Charge Memo|Reminder)$/i.test(x); });
-    var type=ti>=0?c[ti]:'Invoice';
-    var ei=c.findIndex(function(x,i){ return i!==ii && EXT.test(x); });
-    var amt=amts[amts.length-1]; if(isCreditDoc(type)) amt=-Math.abs(amt);
-    out.push({doc:c[ii], ext:ei>=0?c[ei]:'', type:type, inv:inv?ymd(inv):'', due:due?ymd(due):'', amt:round2(amt)});
-  });
-  if(!out.length) throw new Error('Statement PDF: no invoice lines found');
-  return out;
-}
-async function parseStatementFile(file){
-  var ab=await readAsArrayBuffer(file);
-  var isX=/\.(xlsx|xlsm|xls|csv)$/i.test(file.name);
-  var items;
-  if(isX){ var wb=XLSX.read(new Uint8Array(ab),{type:'array',cellDates:true}); items=parseStatementRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:true})); }
-  else items=await parseStatementPdf(ab);
-  // try to identify the customer from the file text
-  var text='';
-  try{ if(isX){ var wb2=XLSX.read(new Uint8Array(ab),{type:'array'}); text=XLSX.utils.sheet_to_csv(wb2.Sheets[wb2.SheetNames[0]]).slice(0,4000); } else text=(await pdfText(ab)).slice(0,4000); }catch(e){}
-  return {items:items, ab:ab, text:text, mime:isX?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf'};
+  return out.sort(function(a,b){ return b.s-a.s; });
 }
 function guessCustomerFromText(text, fileName){
-  var hay=normName(text+' '+(fileName||'').replace(/\.[a-z]+$/i,''));
-  var best=null, bestLen=0;
-  CUSTS.forEach(function(c){
-    if(c.code && new RegExp('\\b'+c.code.replace(/[^A-Z0-9]/gi,'')+'\\b','i').test(text)){ if(100>bestLen){ best=c; bestLen=100; } }
-    var n=normName(c.name); if(n.length>=5 && (' '+hay+' ').indexOf(' '+n+' ')>=0 && n.length>bestLen && bestLen<100){ best=c; bestLen=n.length; }
-  });
-  return best;
+  var cand=statementCandidates(text, fileName); if(!cand.length) return null;
+  if(cand[0].s>=1000) return cand[0].c;           // customer number printed on the statement
+  if(cand.length===1) return cand[0].c;
+  if(cand[0].s>=cand[1].s*1.5) return cand[0].c;  // clearly the longest name
+  return null;                                    // ambiguous: ask
 }
 function saveStatement(cust, parsed, fileName){
   var all=DB.get('nwi_stmts',{}); if(!all||typeof all!=='object') all={};
-  all[cust.name]={file:fileName, at:new Date().toISOString(), items:parsed.items};
+  var rep=parsed.report||null; if(rep&&rep.skipped) rep=Object.assign({},rep,{skipped:rep.skipped.slice(0,40)});
+  all[cust.name]={file:fileName, at:new Date().toISOString(), items:parsed.items, report:rep};
   DB.set('nwi_stmts', all);
   idbSet('stmt_'+cust.name, JSON.stringify({b64:abToBase64(parsed.ab), fname:fileName, mime:parsed.mime, at:Date.now()}));
-  audit('Statement imported', cust.name+' — '+parsed.items.length+' lines');
+  audit('Statement imported', cust.name+' — '+parsed.items.length+' lines'+(rep&&rep.mismatch?' (total differs from statement)':''));
 }
 function statementFor(name){ var all=DB.get('nwi_stmts',{}); return (all&&all[name])||null; }
 function statementFileFor(name){ return idbGet('stmt_'+name).then(function(v){ if(!v) return null; try{ return JSON.parse(v); }catch(e){ return null; } }); }
@@ -1601,14 +1641,478 @@ async function importLedgerFile(file, kind){
 }
 // Detect which report a file is from its header row
 async function detectLedgerKind(file){
-  if(/\.pdf$/i.test(file.name)){ var t=(await pdfText(await readAsArrayBuffer(file))).slice(0,3000).toLowerCase(); if(/summary aging/.test(t)) return 'sa'; if(/aged accounts|aged receiv/.test(t)) return 'ar'; if(/statement/.test(t)) return 'stmt'; if(/remittance/.test(t)) return 'remit'; return null; }
+  if(/\.pdf$/i.test(file.name)){ var t=(await pdfText(await readAsArrayBuffer(file))).slice(0,3000).toLowerCase(); if(/summary aging/.test(t)) return 'sa'; if(/aged accounts|aged receiv/.test(t)) return 'ar'; if(/statement/.test(t)) return 'stmt'; if(/remittance|payment advice/.test(t)) return 'remit'; if(/(invoice|document|ref)/.test(t) && /(outstanding|remaining|balance|debit)/.test(t)) return 'stmt'; return null; }
   var rows=await sheetRows(file); var head=rows.slice(0,40).map(function(r){ return r.map(cellStr).join(' '); }).join(' ').toLowerCase();
   if(/payment types|mid & end month/.test(head)||/latest payment date/.test(head)) return 'terms';
   if(/summary aging/.test(head)) return 'sa';
   if(/aged accounts|aged receiv|not due|credit limit/.test(head)) return 'ar';
   if(/before/.test(head)&&/balance/.test(head)) return 'sa';
   if(/statement|remaining amount|document type/.test(head)) return 'stmt';
+  if(rows.slice(0,40).some(function(r){ return stRowIsHeader(r||[]); })) return 'stmt';
+  // the first sheet may be a summary: look at the other sheets for statement headings
+  try{
+    var ab=await readAsArrayBuffer(file), wb=XLSX.read(new Uint8Array(ab),{type:'array',raw:/\.csv$/i.test(file.name)});
+    for(var i=1;i<wb.SheetNames.length;i++){
+      var rs=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]],{header:1,defval:'',raw:true}).slice(0,60);
+      if(/statement|remaining amount/i.test(rs.map(function(r){ return r.map(cellStr).join(' '); }).join(' ')) || rs.some(function(r){ return stRowIsHeader(r||[]); })) return 'stmt';
+    }
+  }catch(e){}
   return null;
+}
+
+// ── 41-statement.js ──
+// ═══════════════════════════════════════════════════════════════════
+// CUSTOMER STATEMENTS — read every line of a PDF or Excel statement.
+//   • finds the column headings (one or two lines, repeated on every page or only the first)
+//   • places every number, date and word under the heading it sits beneath
+//   • joins wrapped lines, keeps credits/payments as minus, skips totals and the aging box
+//   • compares what it read with the total printed on the statement and lists anything it skipped
+// Output items: {doc, ext, type, inv, due, amt, orig, desc, page}
+// ═══════════════════════════════════════════════════════════════════
+var ST_TYPES=[
+  [/^(balance\s*)?(b\/f|bfwd|brought\s*f(or)?w(ar)?d)|opening\s*balance/i,'Brought forward'],
+  [/credit\s*(memo|note)|^(sales\s*)?cr(edit)?\.?\s*(memo|note|n)?$|^c\/?n$|^scm$/i,'Credit Memo'],
+  [/payment|receipt|remittance|^pmt$|^pay$|^rct$|^bacs$|cash\s*rec/i,'Payment'],
+  [/refund/i,'Refund'],
+  [/finance\s*charge|interest/i,'Finance Charge'],
+  [/reminder/i,'Reminder'],
+  [/journal|adjust|write.?off|^jnl$|discount/i,'Adjustment'],
+  [/invoice|^inv\.?$|^si$|^sales$/i,'Invoice']
+];
+function stType(s){ s=String(s||'').trim(); if(!s) return ''; for(var i=0;i<ST_TYPES.length;i++) if(ST_TYPES[i][0].test(s)) return ST_TYPES[i][1]; return ''; }
+function stIsCredit(t){ return t==='Credit Memo'||t==='Payment'; }
+// keep the old name working for anything that still calls it
+function isCreditDoc(t){ return stIsCredit(stType(t)) || /credit\s*(memo|note)|payment/i.test(t||''); }
+
+var ST_DATE=/^(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\-\s]?[A-Za-z]{3,9}\.?[\-\s,]?\d{2,4})$/;
+var ST_MON=/^[A-Za-z]{3,9}\.?,?$/;
+function stAmt(s){
+  // returns a number, or null when s is not an amount
+  if(s==null) return null; if(typeof s==='number') return isFinite(s)?s:null;
+  var t=String(s).trim().replace(/[–−]/g,'-').replace(/\s+/g,'');
+  if(!t) return null;
+  var neg=false, m;
+  if((m=t.match(/^(.*?)(CR|DR)$/i))){ t=m[1]; if(/CR/i.test(m[2])) neg=true; }
+  t=t.replace(/^(GBP|EUR|USD)/i,'').replace(/(GBP|EUR|USD)$/i,'');
+  if(/^-?\(.*\)$/.test(t)){ neg=true; t=t.replace(/[()]/g,''); }
+  if(/^-/.test(t)){ neg=true; t=t.slice(1); }
+  if(/-$/.test(t)){ neg=true; t=t.slice(0,-1); }
+  var cur=/^[£$€]/.test(t); t=t.replace(/^[£$€]/,''); if(/^-/.test(t)){ neg=true; t=t.slice(1); }
+  if(!/^\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/.test(t)) return null;
+  // a bare integer with no separators is only an amount if it carries a £ sign (it is usually a number of some sort)
+  if(!/[.,]/.test(t) && !cur) return null;
+  var n=parseFloat(t.replace(/,/g,'')); if(isNaN(n)) return null;
+  return neg?-n:n;
+}
+function stIsDoc(s){
+  s=String(s||''); if(!s || ST_DATE.test(s) || stAmt(s)!=null || s.length>24) return false;
+  if(!/\d{3,}/.test(s)) return false;                         // a run of 3+ digits ("31-60" is not a document)
+  var d=(s.match(/\d/g)||[]).length, letters=/[A-Z]/i.test(s);
+  if(!letters && (d<5 || /^(19|20)\d\d$/.test(s))) return false;  // bare numbers need 5+ digits; not a year
+  return /^[A-Z]{0,8}[\-_\/.]?[A-Z0-9][A-Z0-9\-_\/.]*$/i.test(s);
+}
+
+// ── headings ──
+var ST_HWORDS=/^(posting|post|date|dated|doc|doc\.|document|documents|type|no|no\.|nr|number|num|#|invoice|inv|inv\.|external|ext|ext\.|your|our|ref|ref\.|reference|references|order|po|p\.o\.|customer|cust|description|details|particulars|narrative|transaction|trans|trans\.|due|amount|amt|original|orig|remaining|outstanding|open|unpaid|balance|bal|running|debit|debits|dr|credit|credits|cr|value|gross|net|charges|payments|total|currency|curr|days|overdue|item|items|entry|memo|text|period|o\/s)$/i;
+function stColKind(label){
+  var l=String(label||'').toLowerCase().replace(/\s+/g,' ').trim();
+  if(!l) return '';
+  if(/(amount|balance|total)\s*due|remaining|outstanding|^open|unpaid|o\/s|still\s*due|amount\s*open|open\s*amount/.test(l)) return 'rem';
+  if(/due\s*date|date\s*due|^due$|payment\s*due|due\s*on/.test(l)) return 'due';
+  if(/running|cumulative|^bal(ance)?\.?$|account\s*balance/.test(l)) return 'bal';
+  if(/debit|charges|^dr$/.test(l)) return 'debit';
+  if(/credit|payments|^cr$/.test(l)) return 'credit';
+  if(/original|^amount|^amt|value|gross|invoice\s*amount|^total$|^net$/.test(l)) return 'orig';
+  if(/external|your\s*ref|cust(omer)?\.?\s*(ref|po|order)|order|^po\b|p\.o\./.test(l)) return 'ext';
+  if(/type/.test(l)) return 'type';
+  if(/descr|details|particulars|narrative|memo|text|transaction$/.test(l)) return 'desc';
+  if(/posting|invoice\s*date|doc(ument)?\.?\s*date|trans(action)?\.?\s*date|^date$|^dated$|tax\s*point/.test(l)) return 'post';
+  if(/doc|invoice|number|^no\.?$|^nr$|^#$|ref|item|entry|transaction/.test(l)) return 'doc';
+  if(/currency|curr|days|overdue|period/.test(l)) return 'skip';
+  return '';
+}
+var ST_AMTK={rem:1,bal:1,debit:1,credit:1,orig:1};
+function stHeaderScore(words){
+  // words: lowercased tokens; returns true when a line looks like column headings
+  if(words.length<3) return false;
+  var hw=words.filter(function(w){ return ST_HWORDS.test(w); }).length;
+  if(hw<3 || hw/words.length<0.6) return false;
+  var j=words.join(' ');
+  var hasAmt=/amount|debit|credit|balance|outstanding|remaining|value|open|charges|payments|total/.test(j);
+  var hasDoc=/doc|invoice|ref|number|no\b|no\.|transaction|description|details|date/.test(j);
+  return hasAmt && hasDoc;
+}
+// compound headings that belong together ("Posting Date", "External Document No.", "Remaining Amount")
+var ST_H1=/^(posting|post|document|doc|doc\.|due|invoice|inv|inv\.|external|ext|ext\.|your|our|original|orig|remaining|outstanding|open|customer|cust|order|transaction|trans|trans\.|debit|credit|running|amount|balance|bal|total|payment|tax|value)$/i;
+var ST_H2=/^(date|dated|no|no\.|nr|number|#|type|amount|amt|doc|doc\.|document|ref|ref\.|reference|balance|due|remaining|order|po|value|point|on)$/i;
+
+function stLabelsFromTokens(toks){
+  var labels=[];
+  toks.forEach(function(t){
+    var L=labels[labels.length-1];
+    var gap=L?t.x0-L.x1:1e9, cw=Math.max(t.cw||3,2);
+    var last=L?L.words[L.words.length-1]:'';
+    if(L && gap<cw*2.6 && ST_H1.test(last) && ST_H2.test(t.t)){ L.words.push(t.t); L.x1=t.x1; L.t+=' '+t.t; }
+    else labels.push({t:t.t, words:[t.t], x0:t.x0, x1:t.x1});
+  });
+  return labels;
+}
+function stMergeHeaderLines(a, b){
+  // second heading line: join words that sit under a first-line label, add the rest as new labels
+  var out=a.map(function(l){ return {t:l.t, x0:l.x0, x1:l.x1}; });
+  b.forEach(function(l){
+    var c=(l.x0+l.x1)/2, best=null, bd=1e9;
+    out.forEach(function(o){ var oc=(o.x0+o.x1)/2; var inside=c>=o.x0-6&&c<=o.x1+6; var d=Math.abs(oc-c); if((inside||d<Math.max(18,(o.x1-o.x0)))&&d<bd){ bd=d; best=o; } });
+    if(best){ best.t+=' '+l.t; best.x0=Math.min(best.x0,l.x0); best.x1=Math.max(best.x1,l.x1); }
+    else out.push({t:l.t, x0:l.x0, x1:l.x1});
+  });
+  return out.sort(function(p,q){ return p.x0-q.x0; });
+}
+function stColumns(labels){
+  var cols=labels.map(function(l){ return {label:l.t, kind:stColKind(l.t), x0:l.x0, x1:l.x1, xc:(l.x0+l.x1)/2}; }).sort(function(a,b){ return a.x0-b.x0; });
+  // two "date" columns with no due-date heading: the later one is the due date
+  var dates=cols.filter(function(c){ return c.kind==='post'; }); if(dates.length>1 && !cols.some(function(c){ return c.kind==='due'; })) dates[dates.length-1].kind='due';
+  // "Amount" + "Balance" with no remaining column: amount is the line, balance is running
+  // two amount columns both called orig: the right-most is the open amount
+  var origs=cols.filter(function(c){ return c.kind==='orig'; }); if(origs.length>1 && !cols.some(function(c){ return c.kind==='rem'; })) origs[origs.length-1].kind='rem';
+  // two doc columns: second one is the customer's reference
+  var docs=cols.filter(function(c){ return c.kind==='doc'; }); if(docs.length>1 && !cols.some(function(c){ return c.kind==='ext'; })) docs[1].kind='ext';
+  for(var i=0;i<cols.length;i++){ cols[i].start=i?Math.max(cols[i-1].x1+1, cols[i].x0-((cols[i].x0-cols[i-1].x1)*0.5)):-1e9; cols[i].end=i<cols.length-1?cols[i+1].x0-((cols[i+1].x0-cols[i].x1)*0.5):1e9; }
+  return cols;
+}
+
+// ── PDF → tokens with positions ──
+async function stPdfLines(ab){
+  if(typeof pdfjsLib==='undefined') throw new Error('PDF library not loaded — check your connection');
+  var pdf=await pdfjsLib.getDocument({data:pdfBytes(ab)}).promise, lines=[];
+  for(var pn=1;pn<=pdf.numPages;pn++){
+    var page=await pdf.getPage(pn), tc=await page.getTextContent(), toks=[];
+    tc.items.forEach(function(it){
+      var str=String(it.str||''); if(!str.trim()) return;
+      var x=it.transform[4], y=it.transform[5], h=Math.abs(it.height||it.transform[3]||8)||8;
+      var w=it.width||str.length*h*0.5, cw=w/Math.max(1,str.length);
+      var re=/\S+/g, m; while((m=re.exec(str))){ toks.push({t:m[0], x0:x+m.index*cw, x1:x+(m.index+m[0].length)*cw, y:y, h:h, cw:cw}); }
+    });
+    toks.sort(function(a,b){ return (b.y-a.y)||(a.x0-b.x0); });
+    var pl=[];
+    toks.forEach(function(t){ var L=pl[pl.length-1]; if(L && Math.abs(L.y-t.y)<=Math.max(2,Math.min(L.h,t.h)*0.5)) L.toks.push(t); else pl.push({y:t.y, h:t.h, toks:[t], page:pn}); });
+    pl.forEach(function(L){ L.toks.sort(function(a,b){ return a.x0-b.x0; }); L.toks=stJoinTokens(L.toks); L.text=L.toks.map(function(t){ return t.t; }).join(' '); });
+    lines=lines.concat(pl);
+  }
+  return lines;
+}
+// glue pieces that belong to one value: "12 Oct 2026", "1,234.56 CR", "- 45.00", "£ 12.00", "(1,234.56 )"
+function stJoinTokens(toks){
+  var out=[];
+  for(var i=0;i<toks.length;i++){
+    var t=Object.assign({},toks[i]), n=toks[i+1], n2=toks[i+2];
+    if(/^\d{1,2}(st|nd|rd|th)?$/.test(t.t) && n && ST_MON.test(n.t) && MONTHS[n.t.replace(/[.,]/g,'').toLowerCase()] && n2 && /^\d{2,4}$/.test(n2.t)){ t.t=t.t+' '+n.t.replace(/,$/,'')+' '+n2.t; t.x1=n2.x1; i+=2; out.push(t); continue; }
+    if(/^\d{1,2}[\-\/][A-Za-z]{3,9}$/.test(t.t) && n && /^[\-\/]?\d{2,4}$/.test(n.t)){ t.t=t.t+(/^[\-\/]/.test(n.t)?'':'-')+n.t; t.x1=n.x1; i++; out.push(t); continue; }
+    if(/^[\-–−(£$€]$|^\(£$|^-£$/.test(t.t) && n && /^[\d£(]/.test(n.t) && n.x0-t.x1<t.cw*2.5){ t.t=t.t+n.t; t.x1=n.x1; i++; }
+    if(stAmt(t.t)!=null && n && /^(CR|DR|-|\))$/i.test(n.t) && n.x0-t.x1<t.cw*2.5){ t.t=t.t+n.t; t.x1=n.x1; i++; }
+    out.push(t);
+  }
+  return out;
+}
+function stKindOf(t){ if(ST_DATE.test(t.t) && toDate(t.t)) return 'date'; if(stAmt(t.t)!=null) return 'amt'; if(/^-?\d[\d,]*$/.test(t.t)) return 'int'; return 'text'; }
+
+var ST_TOTAL=/\b(total|balance|amount\s*due|owing|owed|outstanding|due\s*now|to\s*pay|closing)\b/i;
+var ST_NOT_TOTAL=/overdue|not\s*(yet\s*)?due|current|\d+\s*[-–]\s*\d+\s*days|over\s*\d+|\bdays\b|b\/f|brought|opening|credit\s*limit|vat\s*reg|page\b/i;
+var ST_AGING=/\b(current|days|month|months|over|older|aged|aging|ageing|not\s*due)\b/i;
+
+function stLineToRecord(L, cols){
+  var toks=L.toks.map(function(t){ return Object.assign({k:stKindOf(t)},t); });
+  var rec={cells:{}, nums:{}, dates:{}, texts:[]};
+  var amtCols=cols.filter(function(c){ return ST_AMTK[c.kind]; }), dateCols=cols.filter(function(c){ return c.kind==='post'||c.kind==='due'; });
+  // ints sitting under an amount column (e.g. "1200") count as amounts
+  toks.forEach(function(t){ if(t.k==='int'){ var near=amtCols.some(function(c){ return Math.abs(t.x1-c.x1)<Math.max(14,t.cw*4); }); if(near && /,/.test(t.t)) t.k='amt'; } });
+  // amounts → nearest amount column by right edge, one value per column
+  var amts=toks.filter(function(t){ return t.k==='amt'; }), used={};
+  if(amtCols.length){
+    amts.map(function(t){ return {t:t, opts:amtCols.map(function(c){ return {c:c, d:Math.min(Math.abs(t.x1-c.x1), Math.abs((t.x0+t.x1)/2-c.xc)*1.1)}; }).sort(function(a,b){ return a.d-b.d; })}; })
+      .sort(function(a,b){ return a.opts[0].d-b.opts[0].d; })
+      .forEach(function(o){ for(var i=0;i<o.opts.length;i++){ var c=o.opts[i].c; if(!used[c.label+c.x0]){ used[c.label+c.x0]=1; rec.nums[c.kind]=(rec.nums[c.kind]==null?0:rec.nums[c.kind])+stAmt(o.t.t); o.t.done=1; return; } } });
+  }
+  rec.allAmts=amts.map(function(t){ return stAmt(t.t); });
+  // dates → nearest date column by centre (in order when counts match)
+  var dts=toks.filter(function(t){ return t.k==='date'; });
+  if(dateCols.length && dts.length===dateCols.length){ dts.forEach(function(t,i){ rec.dates[dateCols[i].kind]=toDate(t.t); }); }
+  else dts.forEach(function(t){ var best=null, bd=1e9; dateCols.forEach(function(c){ var d=Math.abs((t.x0+t.x1)/2-c.xc); if(d<bd && !rec.dates[c.kind]){ bd=d; best=c; } }); if(best) rec.dates[best.kind]=toDate(t.t); else if(!rec.dates.post) rec.dates.post=toDate(t.t); else rec.dates.due=toDate(t.t); });
+  // words and references → the column whose span they start in
+  toks.filter(function(t){ return t.k==='text'||t.k==='int'||(t.k==='amt'&&!t.done); }).forEach(function(t){
+    var col=null; for(var i=0;i<cols.length;i++){ if(t.x0>=cols[i].start-2 && t.x0<cols[i].end){ col=cols[i]; break; } }
+    if(col && (ST_AMTK[col.kind]||col.kind==='post'||col.kind==='due'||col.kind==='skip')){
+      // text under a number column: give it to the nearest text column instead
+      var best=null, bd=1e9; cols.forEach(function(c){ if(['doc','ext','type','desc'].indexOf(c.kind)<0) return; var d=Math.abs((t.x0+t.x1)/2-c.xc); if(d<bd){ bd=d; best=c; } }); col=best;
+    }
+    var k=col?col.kind||'desc':'desc'; if(!k||k==='skip') k='desc';
+    rec.cells[k]=(rec.cells[k]?rec.cells[k]+' ':'')+t.t;
+    rec.texts.push(t.t);
+  });
+  return rec;
+}
+
+function stFinish(r){
+  // r: {cells, nums, dates, page, raw}
+  var c=r.cells, n=r.nums;
+  var doc=(c.doc||'').trim(), ext=(c.ext||'').trim(), desc=(c.desc||'').trim(), typeTxt=(c.type||'').trim();
+  // a reference that landed in the description column (no doc column, or doc column empty)
+  if(!doc){ var parts=(desc+' '+typeTxt).split(/\s+/); var di=parts.findIndex(stIsDoc); if(di>=0){ doc=parts[di]; desc=desc.replace(doc,'').replace(/\s+/g,' ').trim(); } }
+  // doc column sometimes carries "Invoice 17200101"
+  if(doc && /\s/.test(doc)){ var ps=doc.split(/\s+/), d2=ps.filter(stIsDoc); if(d2.length){ var rest=ps.filter(function(x){ return x!==d2[0]; }).join(' '); doc=d2[0]; if(rest){ if(!typeTxt && stType(rest)) typeTxt=rest; else desc=(rest+' '+desc).trim(); } } }
+  var type=stType(typeTxt)||stType(desc.split(/\s+/).slice(0,3).join(' '))||stType(desc)||stType(doc)||'';
+  var amt=null, orig=n.orig!=null?n.orig:null;
+  if(n.rem!=null) amt=n.rem;
+  else if(n.debit!=null||n.credit!=null){ amt=(n.debit||0)-Math.abs(n.credit||0); if(orig==null) orig=amt; }
+  else if(n.orig!=null) amt=n.orig;
+  if(amt==null && n.bal!=null && (type==='Brought forward' || /b\/f|brought|opening/i.test(desc))){ amt=n.bal; type='Brought forward'; }
+  if(amt==null) return null;
+  if(!type) type=amt<0?'Credit':'Invoice';
+  if(stIsCredit(type)) { amt=-Math.abs(amt); if(orig!=null) orig=-Math.abs(orig); }
+  return {doc:doc||(type==='Payment'?'Payment':type==='Brought forward'?'B/F':''), ext:ext, type:type, inv:r.dates.post?ymd(r.dates.post):'', due:r.dates.due?ymd(r.dates.due):'', amt:round2(amt), orig:orig==null?null:round2(orig), bal:n.bal==null?null:round2(n.bal), desc:desc, page:r.page||null};
+}
+
+function stReport(items, totals, skipped, meta){
+  var sumBy=function(f){ return round2(items.filter(f).reduce(function(s,x){ return s+x.amt; },0)); };
+  var total=round2(items.reduce(function(s,x){ return s+x.amt; },0));
+  // printed total: the one that matches wins, otherwise the last "total/balance due" printed
+  var printed=null;
+  totals.forEach(function(t){ if(printed==null || Math.abs(t.v-total)<0.06) printed=t; });
+  var lastBal=null; for(var i=items.length-1;i>=0;i--){ if(items[i].bal!=null){ lastBal=items[i].bal; break; } }
+  var check=printed?printed.v:(lastBal!=null?lastBal:null);
+  return Object.assign({
+    lines:items.length,
+    invoices:items.filter(function(x){ return x.amt>0; }).length,
+    credits:items.filter(function(x){ return x.amt<0 && x.type!=='Payment'; }).length,
+    payments:items.filter(function(x){ return x.type==='Payment'; }).length,
+    owed:sumBy(function(x){ return x.amt>0; }), creditTotal:sumBy(function(x){ return x.amt<0; }), total:total,
+    printedTotal:check, printedLabel:printed?printed.label:(lastBal!=null?'Running balance':''),
+    mismatch: check!=null && Math.abs(check-total)>0.05,
+    skipped:skipped.slice(0,80), skippedCount:skipped.length
+  }, meta||{});
+}
+
+async function parseStatementPdf(ab){
+  var lines=await stPdfLines(ab);
+  var items=[], totals=[], skipped=[], cols=null, prev=null, pendingNoAmt=null, headerSeen=false, headers=[], agingNext=false;
+  var isHead=function(L){ var hasNum=L.toks.some(function(t){ var k=stKindOf(t); return k==='amt'||k==='date'; }); return !hasNum && stHeaderScore(L.toks.map(function(t){ return t.t.toLowerCase(); })); };
+  var headPage={}; lines.forEach(function(L,ix){ if(headPage[L.page]==null && isHead(L)) headPage[L.page]=ix; });
+  for(var i=0;i<lines.length;i++){
+    var L=lines[i];
+    // above the column headings on a page = letterhead, addresses, "Balance due" box
+    var preTable = headPage[L.page]!=null && i<headPage[L.page];
+    if(isHead(L)){
+      var labels=stLabelsFromTokens(L.toks);
+      var N=lines[i+1];
+      if(N && N.page===L.page && Math.abs(L.y-N.y)<Math.max(L.h,N.h)*2.4){
+        var w2=N.toks.map(function(t){ return t.t.toLowerCase(); }), hn2=N.toks.some(function(t){ var k=stKindOf(t); return k==='amt'||k==='date'; });
+        if(!hn2 && w2.length && w2.every(function(w){ return ST_HWORDS.test(w); })){ labels=stMergeHeaderLines(labels, stLabelsFromTokens(N.toks)); i++; }
+      }
+      cols=stColumns(labels); headerSeen=true; prev=null; if(pendingNoAmt){ skipped.push({page:pendingNoAmt.page, text:pendingNoAmt.raw, reason:'no amount on this line'}); pendingNoAmt=null; } headers.push(cols.map(function(c){ return c.label+' → '+(c.kind||'?'); }).join(' | '));
+      continue;
+    }
+    if(prev && prev.page!==L.page) prev=null;
+    var text=L.text;
+    var amtN=L.toks.filter(function(t){ return stKindOf(t)==='amt'; }).length;
+    var docTok=L.toks.find(function(t){ return stIsDoc(t.t); });
+    if(!cols || preTable){
+      if(pendingNoAmt){ skipped.push({page:pendingNoAmt.page, text:pendingNoAmt.raw, reason:'no amount on this line'}); pendingNoAmt=null; }
+      // before any heading: only look for a printed balance
+      if(amtN && ST_TOTAL.test(text) && !ST_NOT_TOTAL.test(text)){ var v0=stAmt(L.toks.filter(function(t){ return stKindOf(t)==='amt'; }).pop().t); totals.push({label:text.replace(/[\d£$€,.()\-]+/g,'').trim().slice(0,40), v:v0, page:L.page}); }
+      continue;
+    }
+    var rec=stLineToRecord(L, cols); rec.page=L.page; rec.hasDueCol=cols.some(function(c){ return c.kind==='due'; });
+    var hasAmt=Object.keys(rec.nums).length>0, hasDate=!!(rec.dates.post||rec.dates.due), hasDoc=(rec.cells.doc||'').split(/\s+/).some(function(w){ return stIsDoc(w)||/^\d{3,}$/.test(w); }) || !!docTok;
+    if(hasAmt && /brought\s*f(or)?w(ar)?d|b\/f\b|bfwd|opening\s*balance/i.test(text)){
+      rec.raw=text; rec.cells.type='Brought forward'; var bf=stFinish(rec); if(bf){ bf.type='Brought forward'; bf.doc=bf.doc||'B/F'; items.push(bf); prev={item:bf, page:L.page, y:L.y, h:L.h}; } continue;
+    }
+    var isTotalLine=!hasDoc && ST_TOTAL.test(text) && !/^(payment|credit|invoice)/i.test(text);
+    if(isTotalLine && amtN){
+      if(!ST_NOT_TOTAL.test(text)){ var av=rec.nums.rem!=null?rec.nums.rem:rec.nums.bal!=null?rec.nums.bal:rec.allAmts[rec.allAmts.length-1]; totals.push({label:text.replace(/[\d£$€,.()\-]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40), v:av, page:L.page}); }
+      else skipped.push({page:L.page, text:text, reason:'summary line'});
+      prev=null; continue;
+    }
+    if(!hasDoc && !hasDate && amtN>=2 && ST_AGING.test(text)){ skipped.push({page:L.page, text:text, reason:'aging summary'}); prev=null; continue; }
+    if((hasDoc||hasDate) && hasAmt){
+      if(pendingNoAmt){ skipped.push({page:pendingNoAmt.page, text:pendingNoAmt.raw, reason:'no amount on this line'}); pendingNoAmt=null; }
+      rec.raw=text; var it=stFinish(rec);
+      if(it){ items.push(it); prev={item:it, page:L.page, y:L.y, h:L.h}; } else skipped.push({page:L.page, text:text, reason:'no amount found'});
+      continue;
+    }
+    if(!hasAmt && !hasDate && !docTok && ST_AGING.test(text)){ agingNext=true; continue; }   // headings of the aging box
+    if(agingNext && hasAmt && !hasDoc && !hasDate){ skipped.push({page:L.page, text:text, reason:'aging summary'}); agingNext=false; continue; }
+    agingNext=false;
+    if((hasDoc||hasDate) && !hasAmt){
+      // wrapped row: the amounts may be on the next line
+      if(rec.texts.join(' ').length<3 && !hasDoc && /statement|date|page|printed/i.test(text)) continue;
+      if(pendingNoAmt) skipped.push({page:pendingNoAmt.page, text:pendingNoAmt.raw, reason:'no amount on this line'});
+      rec.raw=text; pendingNoAmt=rec; continue;
+    }
+    if(!hasDoc && !hasDate && hasAmt){
+      if(pendingNoAmt && pendingNoAmt.page===L.page){
+        Object.keys(rec.nums).forEach(function(k){ pendingNoAmt.nums[k]=rec.nums[k]; });
+        if(rec.cells.desc) pendingNoAmt.cells.desc=((pendingNoAmt.cells.desc||'')+' '+rec.cells.desc).trim();
+        pendingNoAmt.raw+=' / '+text; var it2=stFinish(pendingNoAmt); pendingNoAmt=null;
+        if(it2){ items.push(it2); prev={item:it2, page:L.page, y:L.y, h:L.h}; }
+        continue;
+      }
+      skipped.push({page:L.page, text:text, reason:'amount without a document number or date'}); prev=null; continue;
+    }
+    // words only: a wrapped description/reference for the line above
+    if(prev && Math.abs(prev.y-L.y)<prev.h*2.6 && L.toks.length<=12 && !/^page\b|continued|^statement\b/i.test(text)){
+      var ex=(rec.cells.ext||'').trim(); if(ex && !prev.item.ext) prev.item.ext=ex; else if(ex) prev.item.ext+=' '+ex;
+      var more=[rec.cells.desc,rec.cells.type,rec.cells.doc].filter(Boolean).join(' ').trim(); if(more) prev.item.desc=(prev.item.desc?prev.item.desc+' ':'')+more;
+      prev.y=L.y; continue;
+    }
+  }
+  if(pendingNoAmt) skipped.push({page:pendingNoAmt.page, text:pendingNoAmt.raw, reason:'no amount on this line'});
+  if(!headerSeen){
+    var fb=stPdfFallback(lines); items=fb.items; skipped=skipped.concat(fb.skipped); headers=['(no column headings found — read line by line)'];
+  }
+  items=stDedupe(items, skipped);
+  if(!items.length) throw new Error('Statement PDF: no invoice lines found'+(headerSeen?' under the column headings':'')+'. If this is a scanned image, ask the customer for the PDF or Excel from their system.');
+  return {items:items, report:stReport(items, totals, skipped, {format:'PDF', pages:lines.length?lines[lines.length-1].page:0, columns:headers[0]||''})};
+}
+// no headings anywhere: one record per line that has a reference, a date and an amount
+function stPdfFallback(lines){
+  var items=[], skipped=[], rows=[];
+  lines.forEach(function(L){
+    var toks=L.toks.map(function(t){ return Object.assign({k:stKindOf(t)},t); });
+    var amts=toks.filter(function(t){ return t.k==='amt'; }).map(function(t){ return stAmt(t.t); });
+    var dts=toks.filter(function(t){ return t.k==='date'; }).map(function(t){ return toDate(t.t); });
+    var doc=toks.find(function(t){ return t.k!=='date' && t.k!=='amt' && stIsDoc(t.t); });
+    if(!amts.length) return;
+    if(!doc || !dts.length){ if(ST_TOTAL.test(L.text)||ST_AGING.test(L.text)) return; if(doc||dts.length) skipped.push({page:L.page, text:L.text, reason:'line not complete'}); return; }
+    var words=toks.filter(function(t){ return t.k==='text' && t!==doc; }).map(function(t){ return t.t; });
+    rows.push({L:L, amts:amts, dts:dts, doc:doc.t, words:words});
+  });
+  // is the last number a running balance? (each line's last = previous last + this line's amount)
+  var run=0, tests=0; for(var i=1;i<rows.length;i++){ var a=rows[i].amts, p=rows[i-1].amts; if(a.length>=2 && p.length>=1){ tests++; if(Math.abs(p[p.length-1]+a[a.length-2]-a[a.length-1])<0.02) run++; } }
+  var hasRun=tests>=2 && run/tests>0.6;
+  rows.forEach(function(r){
+    var exti=r.words.findIndex(function(w){ return /^(CP|PO)[A-Z0-9\-]*\d+$|^0\d{4,}$/i.test(w); });
+    var ext=exti>=0?r.words.splice(exti,1)[0]:'';
+    var typeTxt=r.words.join(' '), type=stType(typeTxt)||'';
+    var amt=hasRun&&r.amts.length>=2?r.amts[r.amts.length-2]:r.amts[r.amts.length-1];
+    if(!type) type=amt<0?'Credit':'Invoice';
+    if(stIsCredit(type)) amt=-Math.abs(amt);
+    items.push({doc:r.doc, ext:ext, type:type, inv:r.dts.length>1?ymd(r.dts[0]):'', due:ymd(r.dts[r.dts.length-1]), amt:round2(amt), orig:r.amts.length>1&&!hasRun?round2(r.amts[0]):null, bal:hasRun?round2(r.amts[r.amts.length-1]):null, desc:typeTxt.replace(/\b(invoice|credit memo|payment)\b/ig,'').trim(), page:r.L.page});
+  });
+  return {items:items, skipped:skipped};
+}
+function stDedupe(items, skipped){
+  var seen={}, out=[];
+  items.forEach(function(it){
+    var k=it.doc?(it.doc+'|'+it.amt+'|'+it.due+'|'+it.inv):null;
+    if(k && seen[k] && it.page!==seen[k].page){ skipped.push({page:it.page, text:it.doc+' '+it.amt, reason:'repeated on another page — counted once'}); return; }
+    if(k) seen[k]=it; out.push(it);
+  });
+  return out;
+}
+
+// ── Excel / CSV: every sheet, every heading block ──
+function stRowIsHeader(cells){
+  var s=cells.map(function(x){ return cellStr(x); }).filter(Boolean);
+  if(s.length<3) return false;
+  if(cells.some(function(x){ return typeof x==='number' || x instanceof Date; })) return false;
+  var kinds=s.map(stColKind);
+  var n=kinds.filter(Boolean).length;
+  return n>=3 && kinds.some(function(k){ return ST_AMTK[k]; }) && kinds.some(function(k){ return k==='doc'||k==='post'||k==='due'||k==='desc'; });
+}
+function parseStatementRows(rows, sheetName, acc){
+  acc=acc||{items:[], totals:[], skipped:[], headers:[]};
+  var blocks=[];
+  for(var i=0;i<rows.length;i++){ if(stRowIsHeader(rows[i]||[])) blocks.push(i); }
+  if(!blocks.length) return acc;
+  blocks.forEach(function(hr, bi){
+    var end=bi<blocks.length-1?blocks[bi+1]:rows.length;
+    var H=(rows[hr]||[]).map(function(x){ return cellStr(x); });
+    // two-line headings ("Remaining" / "Amount")
+    var start=hr+1, nx=rows[hr+1]||[];
+    if(nx.length && !nx.some(function(x){ return typeof x==='number'||x instanceof Date; }) && nx.filter(function(x){ return cellStr(x); }).length>=2 && nx.every(function(x){ var s=cellStr(x); return !s || s.split(/\s+/).every(function(w){ return ST_HWORDS.test(w); }); })){
+      H=H.map(function(h,ci){ var b=cellStr(nx[ci]); return (h+' '+b).trim(); }); for(var ci=H.length;ci<nx.length;ci++) H[ci]=cellStr(nx[ci]); start=hr+2;
+    }
+    var kinds=H.map(stColKind);
+    var col={}; kinds.forEach(function(k,ci){ if(k && col[k]==null) col[k]=ci; });
+    // second doc column = customer reference; two orig columns with no remaining: right-most is open
+    var docIdx=kinds.map(function(k,ci){ return k==='doc'?ci:-1; }).filter(function(x){ return x>=0; }); if(docIdx.length>1 && col.ext==null) col.ext=docIdx[1];
+    var origIdx=kinds.map(function(k,ci){ return k==='orig'?ci:-1; }).filter(function(x){ return x>=0; }); if(origIdx.length>1 && col.rem==null){ col.rem=origIdx[origIdx.length-1]; col.orig=origIdx[0]; }
+    var postIdx=kinds.map(function(k,ci){ return k==='post'?ci:-1; }).filter(function(x){ return x>=0; }); if(postIdx.length>1 && col.due==null) col.due=postIdx[postIdx.length-1];
+    var data=rows.slice(start,end);
+    // merged headings: data can sit one column to the side — but only ever move into a column with no heading of its own
+    var bindTo=function(ci, kind){
+      var test=kind==='num'?function(v){ return typeof v==='number'||stAmt(v)!=null; }:function(v){ return !!toDate(v); };
+      var hits=function(c){ var n=0; data.forEach(function(r){ if(r&&test(r[c])) n++; }); return n; };
+      if(hits(ci)>0) return ci;
+      var cands=[ci+1,ci-1,ci+2,ci-2]; for(var i=0;i<cands.length;i++){ var c=cands[i]; if(c>=0 && !H[c] && hits(c)>0) return c; }
+      return ci;
+    };
+    ['rem','orig','debit','credit','bal'].forEach(function(k){ if(col[k]!=null) col[k]=bindTo(col[k],'num'); });
+    ['post','due'].forEach(function(k){ if(col[k]!=null) col[k]=bindTo(col[k],'date'); });
+    acc.headers.push((sheetName?sheetName+': ':'')+H.filter(Boolean).map(function(h,ci){ return h; }).join(' | '));
+    var prev=null;
+    data.forEach(function(row, ri){
+      row=row||[]; var vals=row.map(cellStr); if(!vals.some(Boolean)){ prev=null; return; }
+      var line=vals.filter(Boolean).join(' · ');
+      var g=function(k){ return col[k]!=null?row[col[k]]:''; };
+      var numOf=function(k){ if(col[k]==null) return null; var v=row[col[k]]; if(v===''||v==null) return null; var a=typeof v==='number'?v:stAmt(v); return a==null?null:a; };
+      var nums={}; ['rem','orig','debit','credit','bal'].forEach(function(k){ var v=numOf(k); if(v!=null) nums[k]=v; });
+      var doc=cellStr(g('doc')), dPost=toDate(g('post')), dDue=toDate(g('due'));
+      var anyNum=Object.keys(nums).length>0;
+      var textAll=vals.join(' ');
+      if(!doc && !dPost && !dDue && ST_TOTAL.test(textAll)){
+        if(anyNum && !ST_NOT_TOTAL.test(textAll)) acc.totals.push({label:vals.filter(function(v){ return v && stAmt(v)==null; }).join(' ').slice(0,40), v:nums.rem!=null?nums.rem:nums.bal!=null?nums.bal:nums.orig!=null?nums.orig:(nums.debit||0)-(nums.credit||0)});
+        else if(anyNum) acc.skipped.push({page:sheetName, text:line, reason:'summary line'});
+        prev=null; return;
+      }
+      if(!anyNum){
+        // a wrapped description under the row above
+        if(prev && !doc && !dPost){ var extra=[cellStr(g('desc')),cellStr(g('ext')),cellStr(g('type'))].filter(Boolean).join(' '); if(extra){ prev.desc=(prev.desc?prev.desc+' ':'')+extra; return; } }
+        if(doc||dPost) acc.skipped.push({page:sheetName, text:line, reason:'no amount on this row'});
+        return;
+      }
+      if(!doc && !dPost && !dDue){ if(ST_AGING.test(textAll)) acc.skipped.push({page:sheetName, text:line, reason:'aging summary'}); else acc.skipped.push({page:sheetName, text:line, reason:'amount without a document number or date'}); return; }
+      var it=stFinish({cells:{doc:doc, ext:cellStr(g('ext')), type:cellStr(g('type')), desc:cellStr(g('desc'))}, nums:nums, dates:{post:dPost, due:dDue}, page:sheetName, hasDueCol:col.due!=null});
+      if(it){ if(it.amt===0 && col.rem!=null && nums.rem===0){ acc.skipped.push({page:sheetName, text:line, reason:'fully paid (nothing open)'}); return; } acc.items.push(it); prev=it; }
+      else acc.skipped.push({page:sheetName, text:line, reason:'no amount found'});
+    });
+  });
+  return acc;
+}
+function parseStatementWorkbook(wb){
+  var acc={items:[], totals:[], skipped:[], headers:[]}, sheets=0;
+  wb.SheetNames.forEach(function(sn){
+    var rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
+    var before=acc.items.length; parseStatementRows(rows, wb.SheetNames.length>1?sn:'', acc); if(acc.items.length>before) sheets++;
+  });
+  if(!acc.headers.length) throw new Error('Statement: column headings not found (need a document/invoice number or date column and an amount, outstanding or balance column)');
+  var items=stDedupe(acc.items, acc.skipped);
+  if(!items.length) throw new Error('Statement: no open items found under the headings '+acc.headers[0]);
+  return {items:items, report:stReport(items, acc.totals, acc.skipped, {format:'Excel', sheets:sheets, columns:acc.headers[0]})};
+}
+async function parseStatementFile(file){
+  var ab=await readAsArrayBuffer(file);
+  var isX=/\.(xlsx|xlsm|xls|csv|ods)$/i.test(file.name);
+  var res, text='';
+  if(isX){
+    if(typeof XLSX==='undefined') throw new Error('Excel library not loaded — check your connection');
+    // CSV: keep the text as written so 01/07/26 is read the UK way (1 July), not as a US date
+    var wb=/\.csv$/i.test(file.name)?XLSX.read(new Uint8Array(ab),{type:'array',raw:true}):XLSX.read(new Uint8Array(ab),{type:'array',cellDates:true});
+    res=parseStatementWorkbook(wb);
+    try{ text=wb.SheetNames.slice(0,2).map(function(sn){ return XLSX.utils.sheet_to_csv(wb.Sheets[sn]); }).join('\n').slice(0,4000); }catch(e){}
+  } else {
+    res=await parseStatementPdf(ab);
+    try{ text=(await pdfText(ab)).slice(0,4000); }catch(e){}
+  }
+  return {items:res.items, report:res.report, ab:ab, text:text, mime:isX?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf'};
+}
+// plain-English one-liner for toasts and the composer
+function stmtSummary(rep){
+  if(!rep) return '';
+  var s=rep.lines+' line'+(rep.lines===1?'':'s')+' read: '+rep.invoices+' invoice'+(rep.invoices===1?'':'s')+(rep.credits?', '+rep.credits+' credit'+(rep.credits===1?'':'s'):'')+(rep.payments?', '+rep.payments+' payment'+(rep.payments===1?'':'s')+' on account':'')+' · open total '+money(rep.total);
+  if(rep.printedTotal!=null) s+=rep.mismatch?' · statement says '+money(rep.printedTotal)+' — check':' · matches the statement total';
+  if(rep.skippedCount) s+=' · '+rep.skippedCount+' line'+(rep.skippedCount===1?'':'s')+' not used';
+  return s;
 }
 
 // ── 45-collections.js ──
@@ -1662,13 +2166,23 @@ function isBrokenPTP(name){ var p=getPTP(name); if(!p||!p.date) return false; va
 
 // PAYMENTS [{customer, date, amount, currency, source, loggedAt}]
 function payments(){ var a=DB.get('nwi_payments',[]); return Array.isArray(a)?a:[]; }
-function recordPayment(name, date, amount, currency, source){
-  var a=payments(); a.unshift({customer:name, date:ymd(date), amount:round2(num(amount)), currency:currency||'GBP', source:source||'manual', loggedAt:new Date().toISOString()});
+function recordPayment(name, date, amount, currency, source, ref){
+  var id=uid();
+  var a=payments(); a.unshift({id:id, customer:name, date:ymd(date), amount:round2(num(amount)), currency:currency||'GBP', source:source||'manual', ref:ref||'', loggedAt:new Date().toISOString()});
   if(a.length>3000) a.length=3000;
   DB.set('nwi_payments',a);
   var p=getPTP(name); if(p) clearPTP(name);
   audit('Payment recorded', name+' '+money(amount,currency)+' on '+fmtD(date));
+  return {id:id, ptp:p||null};
 }
+// take a logged payment back out (undo, or a remittance put back to "to confirm")
+function removePayment(id){
+  if(!id) return false;
+  var a=payments(), i=a.findIndex(function(p){ return p.id===id; }); if(i<0) return false;
+  var p=a.splice(i,1)[0]; DB.set('nwi_payments',a); audit('Payment removed', p.customer+' '+money(p.amount,p.currency)); return true;
+}
+function updatePayment(id, patch){ var a=payments(), p=a.find(function(x){ return x.id===id; }); if(!p) return; Object.assign(p, patch); DB.set('nwi_payments',a); }
+function restorePTP(name, p){ if(!p) return; var o=ptps(); if(!o[name]){ o[name]=p; DB.set('nwi_ptp',o); } }
 function paymentsBetween(from,to,gbpOnly){
   var f=ymd(from), t=ymd(to);
   return payments().filter(function(p){ var d=ymd(toDate(p.date)); return d>=f && d<=t && (!gbpOnly||(p.currency||'GBP')==='GBP'); });
@@ -1682,6 +2196,13 @@ function setSnooze(name, date){ var o=snoozes(); if(date) o[name]=ymd(date); els
 
 // RUN TICKS {runId:{name:{t:1,at,by}}}
 function runTicks(runId){ var o=DB.get('nwi_run_ticks',{}); return (o&&o[runId])||{}; }
+function getTickRaw(runId, name){ var o=DB.get('nwi_run_ticks',{}); return (o&&o[runId]&&o[runId][name])?JSON.parse(JSON.stringify(o[runId][name])):null; }
+// put a tick back exactly as it was (null = never touched, so the automatic tick applies again)
+function restoreTick(runId, name, prev){
+  var o=DB.get('nwi_run_ticks',{}); if(!o||typeof o!=='object') o={};
+  o[runId]=o[runId]||{}; if(prev) o[runId][name]=prev; else delete o[runId][name];
+  DB.set('nwi_run_ticks',o);
+}
 function setTick(runId, name, on, why){
   var o=DB.get('nwi_run_ticks',{}); if(!o||typeof o!=='object') o={};
   o[runId]=o[runId]||{};
@@ -1709,6 +2230,7 @@ var CUSTS=[], CBYNAME={};
 var LEDGER={saAt:null, arAt:null, saAsOf:null, arAsOf:null, saFile:'', arFile:''};
 
 function rebuild(){
+  if(typeof FC_GEN!=='undefined') FC_GEN++;
   resetProfileIndex();
   var sa=DB.get('nwi_sa_customers',[]), ar=DB.get('nwi_ar_customers',[]);
   if(!Array.isArray(sa)) sa=[]; if(!Array.isArray(ar)) ar=[];
@@ -1775,9 +2297,9 @@ function tranches(c){
   if(c.tr) return c.tr;
   var td=c.termDays||30, tr=[], src='';
   var latestLedger=[LEDGER.saAt,LEDGER.arAt].filter(Boolean).sort().pop();
-  if(c.stmt && c.stmt.items && c.stmt.items.length && (!latestLedger || new Date(c.stmt.at)>=new Date(new Date(latestLedger).getTime()-864e5))){
+  if(stmtUsable(c, latestLedger)){
     src='statement';
-    c.stmt.items.forEach(function(it){ var d=fromYMD(it.due)||today(); tr.push({amt:it.amt, f:d, t:d, doc:it.doc, src:src}); });
+    c.stmt.items.forEach(function(it){ var d=stmtDue(it,c)||today(); tr.push({amt:it.amt, f:d, t:d, doc:it.doc, src:src}); });
   } else if(c.sa && c.sa.buckets && c.sa.buckets.length){
     src='aging';
     var asOf=LEDGER.saAsOf?fromYMD(LEDGER.saAsOf):today();
@@ -1823,8 +2345,22 @@ function overdueByTiming(c){ return dueBetween(c, null, addDays(today(),-1)); }
 function overdueToQuote(c){
   tranches(c);
   // with a statement: the same figure as the "Total overdue" line in the email table
-  if(c.trSrc==='statement') return round2(sum(c.stmt.items.filter(function(it){ var d=fromYMD(it.due); return it.amt>0 && (!d||d<today()); }),function(it){ return it.amt; }));
+  if(hasStatement(c)) return round2(sum(c.stmt.items.filter(function(it){ var d=stmtDue(it,c); return it.amt>0 && (!d||d<today()); }),function(it){ return it.amt; }));
   return c.overdue;
+}
+// ── statements on file ──
+function hasStatement(c){ return !!(c && c.stmt && c.stmt.items && c.stmt.items.length); }
+// due date of a statement line; lines with only an invoice date get the customer's terms added
+function stmtDue(it, c){ var d=fromYMD(it.due); if(d) return d; var i=fromYMD(it.inv); if(i) return addDays(i, (c&&c.termDays)||30); return null; }
+function stmtTotal(c){ return hasStatement(c)?round2(sum(c.stmt.items,function(it){ return it.amt; })):0; }
+// is the statement older than the latest ledger import?
+function stmtStale(c){ if(!hasStatement(c)) return false; var latest=[LEDGER.saAt,LEDGER.arAt].filter(Boolean).sort().pop(); return !!latest && new Date(c.stmt.at)<new Date(new Date(latest).getTime()-864e5); }
+// timing: use the statement when it is newer than the ledger, or when it still adds up to today's balance
+function stmtUsable(c, latestLedger){
+  if(!hasStatement(c)) return false;
+  if(!latestLedger || new Date(c.stmt.at)>=new Date(new Date(latestLedger).getTime()-864e5)) return true;
+  var bal=c.ar?c.ar.balance:(c.sa?c.sa.balance:null);
+  return bal!=null && Math.abs(stmtTotal(c)-bal)<1;
 }
 // Expected payment date for money due on D (Date or null for "already overdue")
 function expectedPayDate(c, D){
@@ -1947,7 +2483,16 @@ function runSummary(rows, cur){
 //   Queries are taken OUT of the forecast and shown on their own line.
 // ═══════════════════════════════════════════════════════════════════
 function fxToGBP(amount, cur){ cur=(cur||'GBP').toUpperCase(); if(cur==='GBP') return amount; var r=num((settings().fx||{})[cur]); return r?amount*r:0; }
+// The same forecast is asked for several times while one page draws (Today asks three times).
+// Keep the answer until anything is saved, the ledger is rebuilt or the day changes.
+var FC_GEN=0, _fcMemo={};
 function buildForecast(opts){
+  var key=JSON.stringify(opts||{})+'|'+FC_GEN+'|'+ymd(today())+'|'+CUSTS.length;
+  var m=_fcMemo[key]; if(m) return m;
+  if(Object.keys(_fcMemo).length>40) _fcMemo={};
+  return (_fcMemo[key]=buildForecastNow(opts));
+}
+function buildForecastNow(opts){
   opts=opts||{};
   var st=settings();
   var nW=opts.weeks||st.forecastWeeks||8, curSel=opts.currency||'GBP', inclP=opts.includePartners!=null?opts.includePartners:st.includePartners;
@@ -2116,21 +2661,23 @@ function deleteQuery(id){ saveQueries(queries().filter(function(q){ return Strin
 // Table: overdue (red) + becoming due by the run date (amber); queried invoices flagged (orange)
 // ═══════════════════════════════════════════════════════════════════
 var EM=null;
-function emailRows(c, run, inclBecoming){
+function emailRows(c, run, inclBecoming, scope){
   var t=today(), rd=run?run.date:addDays(t,7), qs=queryInvoiceSet(c);
   tranches(c);
-  if(c.trSrc==='statement' && c.stmt){
-    var rows=[];
+  if(hasStatement(c)){
+    var rows=[], all=scope==='all';
     c.stmt.items.forEach(function(it){
-      if(it.amt<=0) return;
-      var d=fromYMD(it.due);
+      var d=stmtDue(it,c);
+      var q=!!(qs[String(it.doc).toLowerCase()]||(it.ext&&qs[String(it.ext).toLowerCase()]));
+      if(it.amt<=0){ if(all) rows.push({doc:it.doc, ext:it.ext, type:it.type||'Credit', due:d, amt:it.amt, st:'credit', q:q}); return; }
       var st = !d||d<t ? 'overdue' : (d<=rd ? 'becoming' : 'later');
-      if(st==='later' || (st==='becoming' && !inclBecoming)) return;
-      rows.push({doc:it.doc, ext:it.ext, type:it.type, due:d, amt:it.amt, st:st, q:!!(qs[String(it.doc).toLowerCase()]||(it.ext&&qs[String(it.ext).toLowerCase()]))});
+      if(!all && (st==='later' || (st==='becoming' && !inclBecoming))) return;
+      rows.push({doc:it.doc, ext:it.ext, type:it.type, due:d, amt:it.amt, st:st, q:q});
     });
-    rows.sort(function(a,b){ return (a.due||0)-(b.due||0); });
+    var ord={overdue:0, becoming:1, later:2, credit:3};
+    rows.sort(function(a,b){ return all?((ord[a.st]-ord[b.st])||((a.due||0)-(b.due||0))):((a.due||0)-(b.due||0)); });
     var credits=round2(-sum(c.stmt.items.filter(function(i){ return i.amt<0; }),function(i){ return i.amt; }));
-    return {kind:'invoices', rows:rows, credits:credits};
+    return {kind:'invoices', rows:rows, credits:credits, all:all, balance:stmtTotal(c)};
   }
   // no statement → aging periods
   var rows2=[];
@@ -2157,16 +2704,16 @@ function emailTableHtml(c, run, data){
   var td='padding:8px 12px;border:1px solid #b9d9ea;font-family:Arial,Helvetica,sans-serif;font-size:12px;';
   var rows=data.rows;
   if(!rows.length) return '<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#475569">(No overdue or becoming-due items found.)</p>';
-  var bg={overdue:'#fde8e8', becoming:'#fff4d6'}, fg={overdue:'#b91c1c', becoming:'#92400e'};
+  var bg={overdue:'#fde8e8', becoming:'#fff4d6', later:'#f1f5f9', credit:'#e0f2fe'}, fg={overdue:'#b91c1c', becoming:'#92400e', later:'#334155', credit:'#075985'};
   var odT=sum(rows.filter(function(r){return r.st==='overdue';}),function(r){return r.amt;}), bdT=sum(rows.filter(function(r){return r.st==='becoming';}),function(r){return r.amt;});
   var body=rows.map(function(r){
     var b=r.q?'#ffedd5':bg[r.st], f=r.q?'#9a3412':fg[r.st];
-    var status=r.st==='overdue'?'Overdue':'Becoming due'; if(r.q) status+=' · In query';
+    var status={overdue:'Overdue', becoming:'Becoming due', later:'Not yet due', credit:'Credit'}[r.st]||''; if(r.q) status+=' · In query';
     return '<tr>'+
       '<td style="'+td+'background:'+b+';font-family:Consolas,\'Courier New\',monospace;font-weight:700">'+esc(r.doc)+'</td>'+
       (data.kind==='invoices'?'<td style="'+td+'background:'+b+';color:#334155">'+esc(r.ext||'—')+'</td>':'')+
       '<td style="'+td+'background:'+b+'">'+esc(r.type||'Invoice')+'</td>'+
-      '<td style="'+td+'background:'+b+';color:'+f+';font-weight:'+(r.st==='overdue'?700:400)+'">'+(r.due?fmtD(r.due):'—')+'</td>'+
+      '<td style="'+td+'background:'+b+';color:'+f+';font-weight:'+(r.st==='overdue'?700:400)+'">'+(r.due&&r.st!=='credit'?fmtD(r.due):'—')+'</td>'+
       '<td style="'+td+'background:'+b+';color:'+f+';font-weight:700">'+status+'</td>'+
       '<td align="right" style="'+td+'background:'+b+';color:'+f+';font-weight:700;white-space:nowrap">'+money(r.amt,sym)+'</td></tr>';
   }).join('');
@@ -2174,17 +2721,21 @@ function emailTableHtml(c, run, data){
   var tot='<tr><td colspan="'+span+'" style="'+td+'background:#fde8e8;font-weight:700;color:#b91c1c">Total overdue</td><td align="right" style="'+td+'background:#fde8e8;font-weight:700;color:#b91c1c;white-space:nowrap">'+money(odT,sym)+'</td></tr>'+
     (bdT?'<tr><td colspan="'+span+'" style="'+td+'background:#fff4d6;font-weight:700;color:#92400e">Total becoming due by '+fmtD(run.date)+'</td><td align="right" style="'+td+'background:#fff4d6;font-weight:700;color:#92400e;white-space:nowrap">'+money(bdT,sym)+'</td></tr>':'')+
     '<tr><td colspan="'+span+'" style="'+th+';font-size:12px">Total for this payment run</td><td align="right" style="'+th+';font-size:13px;white-space:nowrap">'+money(odT+bdT,sym)+'</td></tr>'+
-    (data.credits>0.005?'<tr><td colspan="'+(span+1)+'" style="'+td+'color:#334155;font-style:italic">Unallocated credits on account: '+money(data.credits,sym)+' — please let me know which invoices these should be applied to.</td></tr>':'');
-  var legend='<p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#475569;margin:10px 0 6px 0"><span style="display:inline-block;width:10px;height:10px;background:#fde8e8;border:1px solid #b91c1c;margin-right:5px"></span>Overdue &nbsp;&nbsp; <span style="display:inline-block;width:10px;height:10px;background:#fff4d6;border:1px solid #92400e;margin-right:5px"></span>Becoming due by '+fmtD(run.date)+(rows.some(function(r){return r.q;})?' &nbsp;&nbsp; <span style="display:inline-block;width:10px;height:10px;background:#ffedd5;border:1px solid #9a3412;margin-right:5px"></span>In query':'')+'</p>';
+    (data.all?(function(){ var lt=sum(rows.filter(function(r){return r.st==='later';}),function(r){return r.amt;}), cr=sum(rows.filter(function(r){return r.st==='credit';}),function(r){return r.amt;});
+      return (lt?'<tr><td colspan="'+span+'" style="'+td+'background:#f1f5f9;font-weight:700;color:#334155">Not yet due</td><td align="right" style="'+td+'background:#f1f5f9;font-weight:700;color:#334155;white-space:nowrap">'+money(lt,sym)+'</td></tr>':'')+
+        (cr?'<tr><td colspan="'+span+'" style="'+td+'background:#e0f2fe;font-weight:700;color:#075985">Credits and payments on account</td><td align="right" style="'+td+'background:#e0f2fe;font-weight:700;color:#075985;white-space:nowrap">'+money(cr,sym)+'</td></tr>':'')+
+        '<tr><td colspan="'+span+'" style="'+td+'font-weight:700">Account balance</td><td align="right" style="'+td+'font-weight:700;white-space:nowrap">'+money(odT+bdT+lt+cr,sym)+'</td></tr>'; })():'')+
+    (!data.all&&data.credits>0.005?'<tr><td colspan="'+(span+1)+'" style="'+td+'color:#334155;font-style:italic">Unallocated credits on account: '+money(data.credits,sym)+' — please let me know which invoices these should be applied to.</td></tr>':'');
+  var legend='<p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#475569;margin:10px 0 6px 0"><span style="display:inline-block;width:10px;height:10px;background:#fde8e8;border:1px solid #b91c1c;margin-right:5px"></span>Overdue &nbsp;&nbsp; <span style="display:inline-block;width:10px;height:10px;background:#fff4d6;border:1px solid #92400e;margin-right:5px"></span>Becoming due by '+fmtD(run.date)+(data.all?' &nbsp;&nbsp; <span style="display:inline-block;width:10px;height:10px;background:#f1f5f9;border:1px solid #334155;margin-right:5px"></span>Not yet due &nbsp;&nbsp; <span style="display:inline-block;width:10px;height:10px;background:#e0f2fe;border:1px solid #075985;margin-right:5px"></span>Credit':'')+(rows.some(function(r){return r.q;})?' &nbsp;&nbsp; <span style="display:inline-block;width:10px;height:10px;background:#ffedd5;border:1px solid #9a3412;margin-right:5px"></span>In query':'')+'</p>';
   return legend+'<table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:760px;margin:0 0 14px 0"><thead><tr>'+
     '<th align="left" style="'+th+'">'+(data.kind==='invoices'?'Invoice No.':'Period')+'</th>'+(data.kind==='invoices'?'<th align="left" style="'+th+'">Your Ref.</th>':'')+'<th align="left" style="'+th+'">Type</th><th align="left" style="'+th+'">Due Date</th><th align="left" style="'+th+'">Status</th><th align="right" style="'+th+'">Amount</th></tr></thead><tbody>'+body+tot+'</tbody></table>';
 }
 function emailTableText(c, run, data){
-  return data.rows.map(function(r){ return (r.doc+'  '+(r.ext||'')+'  '+(r.due?fmtD(r.due):'')+'  '+(r.st==='overdue'?'OVERDUE':'Becoming due')+(r.q?' (in query)':'')+'  '+money(r.amt,c.currency)).replace(/\s{3,}/g,'  '); }).join('\n');
+  return data.rows.map(function(r){ return (r.doc+'  '+(r.ext||'')+'  '+(r.due?fmtD(r.due):'')+'  '+({overdue:'OVERDUE',becoming:'Becoming due',later:'Not yet due',credit:'Credit'}[r.st]||'')+(r.q?' (in query)':'')+'  '+money(r.amt,c.currency)).replace(/\s{3,}/g,'  '); }).join('\n');
 }
 function fillTemplate(str, vars){ return str.replace(/\{(\w+)\}/g, function(m,k){ return vars[k]!=null?vars[k]:m; }); }
-function renderEmail(c, run, amount, inclBecoming){
-  var tpl=template(), data=emailRows(c, run, inclBecoming);
+function renderEmail(c, run, amount, inclBecoming, scope){
+  var tpl=template(), data=emailRows(c, run, inclBecoming, scope);
   var runName = run.type==='WEEKLY'?'weekly':run.type;
   var vars={amount:money(amount,c.currency), run:runName, runDate:fmtD(run.date), signature:settings().signature||'Pavi', customer:c.name};
   var pS='font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1e293b;line-height:1.6;margin:0 0 12px 0';
@@ -2202,7 +2753,7 @@ function openComposer(name, opts){
   opts=opts||{};
   var run=opts.run?getRunById(opts.run):nextRunFor(c, today());
   if(run && run.type!=='WEEKLY' && c.run!=='WEEKLY' && c.run!=='ADV' && runTypesFor(c.run).indexOf(run.type)<0){ var nr=nextRunFor(c,today()); if(nr) run=nr; }
-  EM={c:c, run:run, attMode:'original', inclBecoming:true, amount:overdueToQuote(c), amountEdited:false, to:contactFor(c), cc:'', bcc:settings().bcc, att:null};
+  EM={c:c, run:run, attMode:'original', inclBecoming:true, scope:devGet('pp_em_scope','run'), amount:overdueToQuote(c), amountEdited:false, to:contactFor(c), cc:'', bcc:settings().bcc, att:null};
   statementFileFor(c.name).then(function(f){ if(f&&f.b64){ EM.att={b64:f.b64, name:f.fname||'Statement.pdf', mime:f.mime||(/\.xlsx?$/i.test(f.fname||'')?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf'), at:f.at}; } drawComposer(); }, function(){ drawComposer(); });
 }
 function composerRunOptions(c){
@@ -2213,7 +2764,7 @@ function composerRunOptions(c){
 }
 function drawComposer(){
   if(!EM) return; var c=EM.c, run=EM.run;
-  var mail=renderEmail(c, run, EM.amount, EM.inclBecoming);
+  var mail=renderEmail(c, run, EM.amount, EM.inclBecoming, EM.scope);
   var warn=[];
   if(c.partner) warn.push('<b>Partner company</b> — chase emails to intercompany accounts are usually wrong.');
   if(isSnoozed(c.name)) warn.push('Snoozed until '+fmtD(snoozes()[c.name])+'.');
@@ -2221,7 +2772,9 @@ function drawComposer(){
   if(!(EM.amount>0)) warn.push('Overdue shows as '+money(0,c.currency)+'. Only send if you are asking about becoming-due items.');
   if(!EM.att && EM.attMode!=='pdf') warn.push('No statement attached — the email says “I have attached the latest statement”. Drop the statement below.');
   else if(EM.att.at && (Date.now()-EM.att.at)>3*864e5) warn.push('The attached statement is from '+fmtD(new Date(EM.att.at))+'. Attach today’s if anything has changed.');
-  if(mail.data.kind==='periods') warn.push('Table shows aging periods because there is no statement on file for this customer.');
+  if(mail.data.kind==='periods') warn.push(c.stmt?'The statement on file ('+esc(c.stmt.file||'')+') has no lines PayPilot could read, so the table shows aging periods. Drop the statement again below, or the Excel version.':'No statement on file for this customer yet, so the table shows aging periods. Drop the statement below and every invoice is listed.');
+  if(hasStatement(c) && stmtStale(c)) warn.push('The statement was saved '+fmtTime(c.stmt.at)+', before your latest ledger import'+(c.ar&&Math.abs(stmtTotal(c)-c.ar.balance)>=1?' — it adds up to '+money(stmtTotal(c),c.currency)+' but the ledger balance is now '+money(c.ar.balance,c.currency)+'. Something has been paid or invoiced since: attach today’s statement':'. It still matches the ledger balance')+'.');
+  if(hasStatement(c) && c.stmt.report && c.stmt.report.mismatch) warn.push('PayPilot read '+money(c.stmt.report.total,c.currency)+' from the statement but it prints '+money(c.stmt.report.printedTotal,c.currency)+'. <a href="#" onclick="stmtLines('+jsArg(c.name)+');return false">Check the lines</a>.');
   if(c.queries&&c.queries.length) warn.push(c.queries.length+' open quer'+(c.queries.length>1?'ies':'y')+' ('+money(c.queryAmt,c.currency)+') — flagged in orange in the table.');
   var rep=replySince(c.name, lastChase(c.name)&&lastChase(c.name).date);
   if(rep) warn.push('They replied on '+fmtTime(rep.at)+': “'+esc((rep.snippet||'').slice(0,120))+'”');
@@ -2236,7 +2789,9 @@ function drawComposer(){
     '<label class="chk"><input type="checkbox" id="em-bcc" '+(EM.bcc?'checked':'')+' onchange="EM.bcc=this.checked"> Bcc '+esc(FINANCE_BCC)+'</label>'+
     '<div class="grid2"><label class="fld"><span>Payment run</span><select id="em-run" onchange="EM.run=getRunById(this.value);drawComposer()">'+runOpts+'</select></label>'+
     '<label class="fld"><span>Overdue to quote ('+esc(c.currency)+')</span><input id="em-amt" type="number" step="0.01" value="'+round2(EM.amount)+'" onchange="EM.amount=num(this.value);EM.amountEdited=true;drawComposer()"></label></div>'+
-    '<label class="chk"><input type="checkbox" '+(EM.inclBecoming?'checked':'')+' onchange="EM.inclBecoming=this.checked;drawComposer()"> Include invoices becoming due by '+fmtD(run.date)+'</label>'+
+    (hasStatement(c)?'<div class="att-toggle"><span class="small b muted" style="align-self:center">Table shows</span><div class="seg"><button class="'+(EM.scope!=='all'?'on':'')+'" onclick="emScope(\'run\')">Overdue + due by run</button><button class="'+(EM.scope==='all'?'on':'')+'" onclick="emScope(\'all\')">Every open item ('+c.stmt.items.length+')</button></div></div>':'')+
+    (EM.scope==='all'&&hasStatement(c)?'':'<label class="chk"><input type="checkbox" '+(EM.inclBecoming?'checked':'')+' onchange="EM.inclBecoming=this.checked;drawComposer()"> Include invoices becoming due by '+fmtD(run.date)+'</label>')+
+    (hasStatement(c)?'<div class="okbox small" style="margin:6px 0"><b>Statement read</b> · '+esc(stmtSummary(c.stmt.report)||c.stmt.items.length+' lines')+' · <a href="#" onclick="stmtLines('+jsArg(c.name)+');return false">see every line</a></div>':'')+
     '<div class="drop" id="em-drop" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="event.preventDefault();this.classList.remove(\'over\');emStatement(event.dataTransfer.files[0])" onclick="$(\'em-file\').click()">'+
       (EM.att?'<b>'+(/pdf/i.test(EM.att.mime||EM.att.name)?'<span class="ftag pdf">PDF</span>':'<span class="ftag xls">XLS</span>')+' '+esc(EM.att.name)+'</b><div class="muted small">'+(EM.att.at?'saved '+fmtTime(new Date(EM.att.at).toISOString()):'')+' · click or drop to replace</div>':'<b>📎 Drop the customer statement here</b><div class="ftypes"><span class="ftag pdf">PDF</span><span class="ftag xls">Excel</span></div><div class="muted small" style="margin-top:6px">From Business Central — it is attached and fills the table</div>')+
       '<input type="file" id="em-file" accept=".pdf,.xlsx,.xls,.xlsm,.csv" hidden onchange="emStatement(this.files[0])"></div>'+
@@ -2251,6 +2806,7 @@ function drawComposer(){
     '<button class="btn btn-p" onclick="emDraft()">Create Gmail draft</button>'});
   ['em-to','em-cc'].forEach(function(id){ var e=$(id); if(e) e.oninput=function(){ EM[id==='em-to'?'to':'cc']=this.value; }; });
 }
+function emScope(v){ EM.scope=v; devSet('pp_em_scope',v); drawComposer(); }
 function emAddTo(e){ var cur=(EM.to||'').trim(); if(cur.toLowerCase().indexOf(e.toLowerCase())>=0) return; EM.to=cur?cur.replace(/[;,]\s*$/,'')+'; '+e:e; drawComposer(); }
 async function emStatement(file){
   if(!file||!EM) return;
@@ -2260,7 +2816,7 @@ async function emStatement(file){
     EM.att={b64:abToBase64(p.ab), name:file.name, mime:p.mime, at:Date.now()};
     rebuild(); EM.c=custByName(EM.c.name)||EM.c;
     if(!EM.amountEdited) EM.amount=overdueToQuote(EM.c);
-    toast('ok','Statement attached', p.items.length+' open items read');
+    toast(p.report&&p.report.mismatch?'warn':'ok','Statement attached', stmtSummary(p.report)||p.items.length+' open items read');
   }catch(e){
     // still attach the file even if we could not read the lines
     try{ var ab=await readAsArrayBuffer(file); EM.att={b64:abToBase64(ab), name:file.name, mime:file.type||'application/pdf', at:Date.now()}; idbSet('stmt_'+EM.c.name, JSON.stringify({b64:EM.att.b64,fname:file.name,mime:EM.att.mime,at:Date.now()})); }catch(e2){}
@@ -2276,7 +2832,7 @@ function emChecks(){
   return true;
 }
 function emAfterSend(via){
-  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming);
+  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming, EM.scope);
   logChase(c.name,{via:via, subject:mail.subject, amount:EM.amount, run:EM.run.id, to:EM.to});
   var cr=currentRun(); if(cr) setTick(cr.id, c.name, true, via==='gmail'?'Gmail draft':'sent');
   if(EM.run && (!cr||EM.run.id!==cr.id)) setTick(EM.run.id, c.name, true, via);
@@ -2284,7 +2840,7 @@ function emAfterSend(via){
 }
 function emDraft(){
   if(!emChecks()) return;
-  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming);
+  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming, EM.scope);
   var go=function(){
     return createDraft({to:EM.to, cc:EM.cc, bcc:EM.bcc?FINANCE_BCC:'', subject:mail.subject, html:mail.html, text:mail.text, att:emAttachment()}).then(function(){
       emAfterSend('gmail'); closeModal(); toast('ok','Draft created in Gmail', c.name+' — review and send from Drafts'); renderAll();
@@ -2294,7 +2850,7 @@ function emDraft(){
 }
 function emMarkSent(){ if(!emChecks()) return; emAfterSend('manual'); closeModal(); toast('ok','Chase logged', EM.c.name); renderAll(); }
 function emCopy(){
-  var mail=renderEmail(EM.c, EM.run, EM.amount, EM.inclBecoming);
+  var mail=renderEmail(EM.c, EM.run, EM.amount, EM.inclBecoming, EM.scope);
   try{
     var item=new ClipboardItem({'text/html':new Blob([mail.html],{type:'text/html'}), 'text/plain':new Blob([mail.text],{type:'text/plain'})});
     navigator.clipboard.write([item]).then(function(){ toast('ok','Email copied','Paste into Outlook or Gmail — formatting and table included'); }, fallback);
@@ -2497,14 +3053,68 @@ function pendingRemits(c){
 }
 function remitsSince(c, since){ var s=ymd(since); return (c.remits||[]).filter(function(r){ return ymd(new Date(r.received))>=s || r.payDate>=s; }); }
 function setRemit(id, patch){
-  var a=remits(); var r=a.find(function(x){ return x.id===id; }); if(!r) return;
+  var a=remits(); var r=a.find(function(x){ return x.id===id; }); if(!r) return null;
+  var before=JSON.parse(JSON.stringify(r));
   var wasConfirmed=r.status==='confirmed';
   Object.assign(r, patch);
-  if(patch.customer!=null){ r.how='set by you'; r.conf='high'; }
-  if(r.status==='confirmed' && !wasConfirmed && !r.paymentLogged && r.customer && r.amount){
-    recordPayment(r.customer, fromYMD(r.payDate)||today(), r.amount, r.currency||'GBP', 'remittance'); r.paymentLogged=true;
+  if(patch.customer!=null){ var cc=custByName(patch.customer); r.customer=cc?cc.name:String(patch.customer||'').trim(); r.how=r.customer?'set by you':'not matched'; r.conf=r.customer?'high':'none'; if(cc&&!patch.currency&&!before.currencySetByYou) r.currency=r.currency||cc.currency; }
+  if(patch.amount!=null) r.amount=round2(num(patch.amount));
+  // confirming logs the payment; un-confirming takes it back out and restores any promise it cleared
+  if(r.status==='confirmed' && !wasConfirmed && r.customer && r.amount){
+    var rec=recordPayment(r.customer, fromYMD(r.payDate)||today(), r.amount, r.currency||'GBP', 'remittance', r.id);
+    r.paymentLogged=true; r.paymentId=rec.id; r.clearedPTP=rec.ptp||null;
+  } else if(wasConfirmed && r.status!=='confirmed'){
+    if(r.paymentId) removePayment(r.paymentId); else if(r.paymentLogged) removeLegacyRemitPayment(before);
+    if(r.clearedPTP) restorePTP(before.customer, r.clearedPTP);
+    r.paymentLogged=false; r.paymentId=''; r.clearedPTP=null;
+  } else if(wasConfirmed && r.paymentId && (patch.amount!=null||patch.payDate!=null||patch.customer!=null||patch.currency!=null)){
+    updatePayment(r.paymentId, {customer:r.customer, amount:r.amount, date:r.payDate, currency:r.currency||'GBP'});
   }
   saveRemits(a); attachRemits();
+  return before;
+}
+// remittances confirmed before payments had ids: remove the matching payment line
+function removeLegacyRemitPayment(r){
+  var a=payments(), i=a.findIndex(function(p){ return p.source==='remittance' && p.customer===r.customer && Math.abs(p.amount-r.amount)<0.005 && p.date===r.payDate; });
+  if(i>=0){ a.splice(i,1); DB.set('nwi_payments',a); }
+}
+// put a remittance back exactly as it was (used by Undo)
+function restoreRemit(snapshot){
+  var a=remits(), i=a.findIndex(function(x){ return x.id===snapshot.id; });
+  var cur=i>=0?a[i]:null;
+  if(cur && cur.status==='confirmed' && snapshot.status!=='confirmed'){ if(cur.paymentId) removePayment(cur.paymentId); if(cur.clearedPTP) restorePTP(cur.customer, cur.clearedPTP); }
+  if(cur && cur.status!=='confirmed' && snapshot.status==='confirmed' && snapshot.customer && snapshot.amount){ var rec=recordPayment(snapshot.customer, fromYMD(snapshot.payDate)||today(), snapshot.amount, snapshot.currency||'GBP', 'remittance', snapshot.id); snapshot.paymentId=rec.id; snapshot.clearedPTP=rec.ptp; }
+  if(i>=0) a[i]=snapshot; else a.unshift(snapshot);
+  saveRemits(a); attachRemits();
+}
+function deleteRemit(id){
+  var a=remits(), i=a.findIndex(function(x){ return x.id===id; }); if(i<0) return null;
+  var r=a[i]; if(r.status==='confirmed'){ if(r.paymentId) removePayment(r.paymentId); else removeLegacyRemitPayment(r); if(r.clearedPTP) restorePTP(r.customer, r.clearedPTP); }
+  a.splice(i,1); saveRemits(a); attachRemits(); audit('Remittance deleted', (r.customer||r.subject||'')+' '+money(r.amount,r.currency));
+  var snap=JSON.parse(JSON.stringify(r)); snap.status=r.status==='confirmed'?'new':r.status; snap.paymentId=''; snap.paymentLogged=false; snap.clearedPTP=null;
+  return {snap:snap, wasConfirmed:r.status==='confirmed'};
+}
+function addRemitManual(v){
+  var c=custByName(v.customer);
+  var r={id:uid(), src:'manual', msgId:'', from:'', subject:'Added by hand', received:new Date().toISOString(), files:[], status:'new', addedAt:new Date().toISOString(),
+    payDate:v.payDate||ymd(today()), dateSrc:'set by you', dateHow:'manual', amount:round2(num(v.amount)), currency:v.currency||(c?c.currency:'GBP'),
+    customer:c?c.name:'', how:c?'set by you':'not matched', conf:c?'high':'none', invoices:String(v.invoices||'').split(/[\s,;]+/).filter(Boolean), snippet:v.note||''};
+  var a=remits(); a.unshift(r); saveRemits(a); attachRemits(); return r;
+}
+// likely customers for a remittance: same amount as what they owe, then name/domain words
+function remitSuggest(r, n){
+  var out={}, add=function(c,s,why){ if(!c) return; if(!out[c.name]||out[c.name].s<s) out[c.name]={c:c,s:s,why:why}; };
+  if(r.amount>0) CUSTS.forEach(function(c){
+    if(Math.abs(c.overdue-r.amount)<0.01) add(c,90,'owes exactly this overdue');
+    else if(Math.abs(c.balance-r.amount)<0.01) add(c,85,'balance is exactly this');
+    else if(c.overdue>0 && Math.abs(c.overdue+dueBetween(c,today(),addDays(today(),21))-r.amount)<0.01) add(c,70,'overdue + due soon matches');
+  });
+  var words=normName(((r.from||'').replace(/<.*?>/,' ')+' '+(r.from||'').replace(/.*@|>.*/g,'').replace(/\.(co\.uk|com|net|org|uk|de|fr|ie|eu)$/,'').replace(/[.\-]/g,' ')+' '+(r.subject||'')+' '+(r.snippet||'').slice(0,300))).split(' ').filter(function(w){ return w.length>=4 && !/^(REMITTANCE|ADVICE|PAYMENT|INVOICE|INVOICES|PAID|BACS|TOTAL|AMOUNT|DATE|FROM|DEAR|PLEASE|FIND|ATTACHED|THANK|THANKS|REGARDS|LIMITED|ACCOUNTS|PAYABLE|FINANCE|NOREPLY|REPLY|MAIL|EMAIL|GMAIL|OUTLOOK|HOTMAIL|SENT|WITH|THIS|THAT|YOUR|HAVE|BEEN|WILL|NEWWAY|INTERNATIONAL)$/.test(w); });
+  if(words.length) CUSTS.forEach(function(c){
+    var cw=normName(c.name).split(' ').filter(function(w){ return w.length>=4; }); if(!cw.length) return;
+    var hit=cw.filter(function(w){ return words.indexOf(w)>=0; }).length; if(hit) add(c, 30+hit/cw.length*30, 'name in the email');
+  });
+  return Object.keys(out).map(function(k){ return out[k]; }).sort(function(a,b){ return b.s-a.s; }).slice(0,n||3);
 }
 
 // ── 75-gmail.js ──
@@ -2743,7 +3353,7 @@ function searchRun(){
   res=res.slice(0,14);
   box.innerHTML=res.length?res.map(function(r,i){
     if(r.k==='c') return '<div class="sr" data-i="'+i+'" onclick="openCust('+jsArg(r.c.name)+');searchClose()"><span>'+esc(r.c.name)+' <span class="muted small">'+esc(r.c.code)+'</span></span><span class="small '+(r.c.overdue>0?'amt-bad':'muted')+'">'+money(r.c.overdue,r.c.currency)+' overdue</span></div>';
-    if(r.k==='i') return '<div class="sr" data-i="'+i+'" onclick="openCust('+jsArg(r.n)+');searchClose()"><span>Invoice <b>'+esc(r.it.doc)+'</b> · '+esc(r.n)+'</span><span class="small muted">'+money(r.it.amt)+' due '+fmtD(fromYMD(r.it.due))+'</span></div>';
+    if(r.k==='i') return '<div class="sr" data-i="'+i+'" onclick="openCust('+jsArg(r.n)+');searchClose()"><span>Invoice <b>'+esc(r.it.doc)+'</b> · '+esc(r.n)+'</span><span class="small muted">'+money(r.it.amt)+(r.it.due?' due '+fmtD(fromYMD(r.it.due)):'')+'</span></div>';
     return '<div class="sr" data-i="'+i+'" onclick="go(\'queries\');searchClose();setTimeout(function(){openQueryForm('+jsArg(r.q.id)+')},50)"><span>Query · '+esc(r.q.customer)+'</span><span class="small muted">'+esc(r.q.invoices)+'</span></div>';
   }).join(''):'<div class="sr muted">No matches</div>';
   box.classList.add('open'); _srIdx=-1;
@@ -2752,8 +3362,16 @@ function searchClose(){ $('gsearch-res').classList.remove('open'); $('gsearch').
 
 // ── drawer ──
 var DRAWER=null;
-function closeDrawer(){ $('drawer').classList.remove('open'); DRAWER=null; }
-function openCust(name){ DRAWER=name; drawDrawer(); $('drawer').classList.add('open'); }
+function closeDrawer(){ $('drawer').classList.remove('open'); var bg=$('drawer-bg'); if(bg) bg.classList.remove('open'); document.body.classList.remove('drawer-on'); DRAWER=null; }
+function openCust(name){ DRAWER=name; drawDrawer(); $('drawer').classList.add('open'); var bg=$('drawer-bg'); if(bg) bg.classList.add('open'); document.body.classList.add('drawer-on'); try{ $('drawer-b').scrollTop=0; }catch(e){} }
+// click anywhere on a table row with a customer name opens that customer (buttons, links and inputs keep their own action)
+document.addEventListener('click', function(e){
+  var t=e.target; if(!t||!t.closest) return;
+  if(t.closest('button,a,input,select,textarea,label,.cname,.drawer,.modal-wrap')) return;
+  var tr=t.closest('tr'); if(!tr) return; var cn=tr.querySelector('.cname'); if(!cn) return;
+  if(window.getSelection && String(window.getSelection())) return;
+  cn.click();
+});
 
 // ── import anything ──
 async function importAny(files){
@@ -2765,9 +3383,9 @@ async function importAny(files){
       var kind=await detectLedgerKind(f);
       if(kind==='sa'||kind==='ar'){ var r=await importLedgerFile(f, kind); did.push((kind==='sa'?'Summary Aging':'Aged Receivables')+' ('+r.rows.length+')'); }
       else if(kind==='terms'){ var n=await importProfilesWorkbook(f); did.push('Payment types ('+n+')'); }
-      else if(kind==='stmt'){ await importStatementGuess(f); did.push('Statement '+f.name); }
+      else if(kind==='stmt'){ var sr=await importStatementGuess(f); did.push('Statement for '+sr.c.name+' — '+stmtSummary(sr.p.report)); }
       else if(kind==='remit'||/remit/i.test(f.name)){ remitFiles.push(f); }
-      else { var choice=await askKind(f); if(choice==='sa'||choice==='ar'){ var r2=await importLedgerFile(f,choice); did.push(f.name+' ('+r2.rows.length+')'); } else if(choice==='stmt'){ await importStatementGuess(f); did.push('Statement '+f.name); } else if(choice==='remit') remitFiles.push(f); }
+      else { var choice=await askKind(f); if(choice==='sa'||choice==='ar'){ var r2=await importLedgerFile(f,choice); did.push(f.name+' ('+r2.rows.length+')'); } else if(choice==='stmt'){ var sr2=await importStatementGuess(f); did.push('Statement for '+sr2.c.name+' — '+stmtSummary(sr2.p.report)); } else if(choice==='remit') remitFiles.push(f); }
     }catch(e){ toast('err','Could not import '+f.name, e.message); }
   }
   if(remitFiles.length){ rebuild(); var n2=await importRemitFiles(remitFiles); did.push(n2+' remittance'+(n2===1?'':'s')); }
@@ -2783,17 +3401,30 @@ function askKind(f){
   });
 }
 async function importStatementGuess(f, forName){
-  var p=await parseStatementFile(f);
+  var p;
+  try{ p=await parseStatementFile(f); }
+  catch(e){
+    // keep the file so it can still go on the email, and say clearly that the lines were not read
+    var fc=forName?custByName(forName):null;
+    if(fc){ try{ var ab=await readAsArrayBuffer(f); var all=DB.get('nwi_stmts',{})||{}; all[fc.name]={file:f.name, at:new Date().toISOString(), items:[], report:{error:e.message, lines:0}}; DB.set('nwi_stmts',all); idbSet('stmt_'+fc.name, JSON.stringify({b64:abToBase64(ab), fname:f.name, mime:/\.pdf$/i.test(f.name)?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', at:Date.now()})); }catch(e2){} }
+    throw new Error(e.message+(fc?' The file is saved and will still be attached to emails.':''));
+  }
   var c=forName?custByName(forName):guessCustomerFromText(p.text, f.name);
   if(!c){
+    var cand=statementCandidates(p.text, f.name).slice(0,4);
     c=await new Promise(function(res){
-      openModal('Which customer is this statement for?','<p class="muted small">'+esc(f.name)+' — '+p.items.length+' open items</p><label class="fld"><span>Customer</span><input id="st-cust" list="cust-dl" placeholder="Start typing…"></label>'+custDatalist(),
-        {foot:'<button class="btn" onclick="closeModal()">Skip</button><button class="btn btn-p" id="st-ok">Save</button>'});
+      openModal('Which customer is this statement for?','<p class="muted small">'+esc(f.name)+' — '+esc(stmtSummary(p.report)||p.items.length+' open items')+'</p>'+
+        (cand.length?'<div class="row" style="margin-bottom:10px">'+cand.map(function(x){ return '<button class="btn btn-s" data-n="'+esc(x.c.name)+'">'+esc(x.c.name)+'</button>'; }).join('')+'</div>':'')+
+        '<label class="fld"><span>Customer</span><input id="st-cust" list="cust-dl" placeholder="Start typing…" value="'+esc(cand[0]?cand[0].c.name:'')+'"></label>'+custDatalist(),
+        {foot:'<button class="btn" id="st-skip">Skip</button><button class="btn btn-p" id="st-ok">Save</button>'});
+      qsa('#modal-body button[data-n]').forEach(function(b){ b.onclick=function(){ $('st-cust').value=b.dataset.n; }; });
+      $('st-skip').onclick=function(){ closeModal(); res(null); };
       $('st-ok').onclick=function(){ var x=custByName($('st-cust').value); if(!x){ toast('warn','Pick a customer from the list',''); return; } closeModal(); res(x); };
     });
+    if(!c) throw new Error('Skipped — not saved to a customer');
   }
   saveStatement(c, p, f.name);
-  return c;
+  return {c:c, p:p};
 }
 function custDatalist(){ return '<datalist id="cust-dl">'+CUSTS.map(function(c){ return '<option value="'+esc(c.name)+'">'; }).join('')+'</datalist>'; }
 
@@ -2870,7 +3501,7 @@ function taskRow(r, i, kind){
 }
 function glance(run, rows){
   var s=run?runSummary(rows,'GBP'):null, wd=run?workingDaysBetween(today(),run.date):0;
-  var fc=buildForecast({currency:'GBP', weeks:1}).weeks[0];
+  var fc=buildForecast({currency:'GBP', weeks:2}).weeks[0];
   var rn=remits().filter(function(r){ return r.status==='new'; });
   var qo=queries().filter(function(q){ return qStatus(q)!=='resolved'; }), qd=qo.filter(function(q){ return qActionDue(q)||qSla(q).cls==='bad'; });
   var pd=Object.keys(ptps()).filter(function(n){ var p=ptps()[n]; return p.date<=ymd(addDays(today(),7)); });
@@ -2977,8 +3608,10 @@ function snoozeForm(name){
 
 function tickDone(name, btn){
   var cr=currentRun(); if(!cr) return;
+  var prev=getTickRaw(cr.id, name);
   setTick(cr.id, name, true, 'manual');
   var row=btn&&btn.closest('.task'); if(row){ row.classList.add('leaving'); }
+  toast('ok','Marked done', name+' — ticked off on the '+cr.label.toLowerCase()+' run', function(){ restoreTick(cr.id, name, prev); renderAll(); toast('info','Undone', name+' is back on the list'); });
   setTimeout(function(){ renderAll(); var left=runRows(cr).filter(function(r){ return r.status==='chase' && !r.ticked; }).length; if(!left) cheer('Chase list cleared','Everyone overdue on the '+cr.label.toLowerCase()+' run has been chased', true); }, row?420:0);
 }
 
@@ -3032,16 +3665,18 @@ function runTable(){
     if(!f.others && !r.member) return false;
     if(f.cur!=='ALL' && r.c.currency!==f.cur) return false;
     if(q && r.c.name.toLowerCase().indexOf(q)<0 && (r.c.code||'').toLowerCase().indexOf(q)<0) return false;
-    if(f.status==='all') return true;
-    if(f.status==='todo') return !r.ticked;
+    if(f.status==='all' || f.status==='todo') return true;
     if(f.status==='fine') return ['fine','nil','credit'].indexOf(r.status)>=0;
     if(f.status==='follow') return r.followUp;
     return r.status===f.status;
   });
-  if(!rows.length){ setHTML('run-tbl','<div class="empty"><b>'+(f.status==='todo'?'Everything on this run is ticked off':'Nothing here')+'</b></div>'); return; }
+  // "To do" keeps ticked rows in a "Ticked off" section underneath — nothing disappears
+  var main=rows, done=[];
+  if(f.status==='todo'){ main=rows.filter(function(r){ return !r.ticked; }); done=rows.filter(function(r){ return r.ticked; }); }
+  if(!rows.length){ setHTML('run-tbl','<div class="empty"><b>Nothing here</b>'+(q?'No customer matches “'+esc(f.q)+'”.':'')+'</div>'); return; }
   var tot={od:0,q:0,due:0,rem:0};
-  var body=rows.map(function(r){
-    var c=r.c; if(c.currency==='GBP'&&!c.partner){ tot.od+=r.outstanding; tot.q+=r.qa; tot.due+=r.dueBy; tot.rem+=r.rem; }
+  var rowHtml=function(r, count){
+    var c=r.c; if(count && c.currency==='GBP'&&!c.partner){ tot.od+=r.outstanding; tot.q+=r.qa; tot.due+=r.dueBy; tot.rem+=r.rem; }
     var lc=r.chases[0];
     var chaseTxt=lc?('<span title="'+esc(lc.subject||'')+'">chased '+fmtDs(new Date(lc.date))+' · '+esc(lc.via||'')+'</span>'):'<span class="muted">not chased</span>';
     if(r.reply) chaseTxt+='<div class="sub" style="color:var(--info)" title="'+esc(r.reply.snippet||'')+'">↩ replied '+fmtDs(new Date(r.reply.at))+'</div>';
@@ -3049,18 +3684,26 @@ function runTable(){
     if(r.missed) chaseTxt+='<div class="sub amt-bad">missed the run</div>';
     var remTxt=r.rem?'<span class="amt-ok" title="'+esc(r.rems.map(function(x){ return money(x.amount,x.currency)+' paying '+fmtD(fromYMD(x.payDate)); }).join('\n'))+'">'+money(r.rem,c.currency)+'</span><div class="sub">pays '+fmtDs(fromYMD(r.rems[0].payDate))+'</div>':'<span class="muted">—</span>';
     var act=chaseTxt+'<div class="sub">'+(c.lastPay?'paid '+fmtDs(c.lastPay)+' ('+c.lastPayDays+'d)':'no payment on file')+'</div>';
-    return '<tr class="'+(r.ticked?'done':'')+'">'+
-      '<td style="width:30px"><input type="checkbox" '+(r.ticked?'checked':'')+' onchange="runTick('+jsArg(c.name)+',this.checked,this)" title="'+(r.manual?'ticked by you':'auto')+'"></td>'+
+    return '<tr class="'+(r.ticked?'done':'')+'" data-name="'+esc(c.name)+'">'+
+      '<td style="width:30px"><input type="checkbox" class="run-tick" '+(r.ticked?'checked':'')+' onchange="runTick('+jsArg(c.name)+',this.checked,this)" aria-label="Ticked off" title="'+(r.ticked?(r.manual?'Ticked by you — untick to put back on the list':'Ticked automatically — untick to put back on the list'):'Tick off when done')+'"></td>'+
       '<td class="cust">'+cname(c)+'<div class="sub">'+esc(c.code)+(r.member?'':' · '+esc(RUN_LABEL[c.run]||c.run)+' payer')+(isSnoozed(c.name)?' · snoozed':'')+' · '+punctuality(c)+'</div></td>'+
-      '<td>'+statusPill(r.status)+'</td>'+
+      '<td>'+statusPill(r.status)+(r.ticked&&!r.manual?'<div class="sub">auto-ticked</div>':'')+'</td>'+
       '<td class="r '+(r.outstanding>0?'amt-bad':'muted')+'">'+money(r.outstanding,c.currency)+(c.check?'<div class="sub" style="color:var(--violet)">hidden '+money0(c.saOverdue,c.currency)+'</div>':'')+(r.qa?'<div class="sub" style="color:var(--orange)">'+money0(r.qa,c.currency)+' in query</div>':'')+'</td>'+
       '<td class="r '+(r.dueBy>0?'amt-warn':'muted')+'">'+money(r.dueBy,c.currency)+'</td>'+
       '<td class="r">'+remTxt+'</td>'+
       '<td class="small">'+act+'</td>'+
       '<td class="nowrap r"><button class="btn btn-xs btn-p" onclick="openComposer('+jsArg(c.name)+',{run:'+jsArg(RUNSEL)+'})">Email</button> <button class="btn btn-xs" onclick="callMenu('+jsArg(c.name)+')">Call</button></td></tr>';
-  }).join('');
-  setHTML('run-tbl','<div class="tbl-wrap tbl-scroll"><table class="tbl"><thead><tr><th></th><th>Customer</th><th>Status</th><th class="r">Overdue</th><th class="r">Due by run</th><th class="r">Remittance</th><th>Last chased / paid</th><th></th></tr></thead><tbody>'+body+'</tbody>'+
-    '<tfoot><tr><td></td><td colspan="2">GBP trade total · '+rows.length+' shown</td><td class="r">'+money0(tot.od)+(tot.q?'<div class="sub">'+money0(tot.q)+' in query</div>':'')+'</td><td class="r">'+money0(tot.due)+'</td><td class="r">'+money0(tot.rem)+'</td><td colspan="2"></td></tr></tfoot></table></div>');
+  };
+  var head='<thead><tr><th></th><th>Customer</th><th>Status</th><th class="r">Overdue</th><th class="r">Due by run</th><th class="r">Remittance</th><th>Last chased / paid</th><th></th></tr></thead>';
+  var body=main.map(function(r){ return rowHtml(r,true); }).join('');
+  var h=main.length?'<div class="tbl-wrap tbl-scroll"><table class="tbl">'+head+'<tbody>'+body+'</tbody>'+
+    '<tfoot><tr><td></td><td colspan="2">GBP trade total · '+main.length+' shown</td><td class="r">'+money0(tot.od)+(tot.q?'<div class="sub">'+money0(tot.q)+' in query</div>':'')+'</td><td class="r">'+money0(tot.due)+'</td><td class="r">'+money0(tot.rem)+'</td><td colspan="2"></td></tr></tfoot></table></div>'
+    :'<div class="empty"><b>Everything on this run is ticked off</b>Open “Ticked off” below to check or untick any of them.</div>';
+  if(f.status==='todo' && done.length){
+    h+='<details class="done-sec" id="done-sec"'+(RUNF.doneOpen?' open':'')+' ontoggle="RUNF.doneOpen=this.open"><summary>Ticked off <span class="pill pill-ok">'+done.length+'</span><span class="muted small" style="font-weight:500">untick any row to put it back on the list</span></summary>'+
+      '<div class="tbl-wrap tbl-scroll"><table class="tbl">'+head+'<tbody>'+done.map(function(r){ return rowHtml(r,false); }).join('')+'</tbody></table></div></details>';
+  }
+  setHTML('run-tbl', h);
 }
 function punctuality(c){
   var p=c.profile;
@@ -3082,11 +3725,15 @@ function repliesClick(){
 }
 
 function runTick(name, on, el){
-  setTick(RUNSEL, name, on, 'manual');
+  var runId=RUNSEL, prev=getTickRaw(runId, name);
+  setTick(runId, name, on, 'manual');
   var tr=el&&el.closest('tr'); if(tr){ tr.classList.toggle('done', on); if(on){ tr.classList.add('flash'); } }
   badges(); try{ renderStreak(); }catch(e){}
-  if(on){ var run=getRunById(RUNSEL); var left=runRows(run).filter(function(r){ return r.status==='chase' && !r.ticked; }).length; if(!left) cheer('Chase list cleared','Every overdue customer on this run is done', true); }
-  setTimeout(function(){ if(RUNF.status==='todo') runTable(); }, 700);
+  if(on){ var run=getRunById(runId); var left=runRows(run).filter(function(r){ return r.status==='chase' && !r.ticked; }).length; if(!left) cheer('Chase list cleared','Every overdue customer on this run is done', true); }
+  toast(on?'ok':'info', on?'Ticked off':'Back on the list', name+(on&&RUNF.status==='todo'?' — moved to “Ticked off” below':''), function(){
+    restoreTick(runId, name, prev); badges(); if(TAB==='runs') runTable(); else renderTab(); toast('info','Undone', name);
+  });
+  clearTimeout(runTick._t); runTick._t=setTimeout(function(){ if(TAB==='runs' && $('run-tbl')) runTable(); }, 650);
 }
 
 // ── 83-customers.js ──
@@ -3155,9 +3802,9 @@ function exportCustomers(){
 // ── Customer panel ──
 function drawDrawer(){
   var name=DRAWER; if(!name) return; var c=custByName(name);
-  if(!c){ $('drawer-h').innerHTML='<h2>'+esc(name)+'</h2><button class="x" onclick="closeDrawer()">×</button>'; $('drawer-b').innerHTML='<div class="empty">Not on the current ledger.</div>'; return; }
+  if(!c){ $('drawer-h').innerHTML='<h2 id="drawer-title">'+esc(name)+'</h2><button class="x" onclick="closeDrawer()" aria-label="Close" title="Close (Esc)">×</button>'; $('drawer-b').innerHTML='<div class="empty">Not on the current ledger.</div>'; return; }
   var p=c.profile, cur=c.currency;
-  $('drawer-h').innerHTML='<div><h2>'+esc(c.name)+'</h2><div class="muted small">'+esc(c.code)+' · '+esc(cur)+' · '+esc(c.terms||p.terms||'no terms')+(c.partner?' · partner':'')+'</div><div class="row" style="margin-top:8px">'+runPill(c)+'<span class="pill pill-mute">'+esc(PAY_LABEL[c.pay])+'</span>'+(c.check?'<span class="pill pill-violet">CHECK</span>':'')+(isSnoozed(c.name)?'<span class="pill pill-mute">Snoozed</span>':'')+'</div></div><button class="x" onclick="closeDrawer()" aria-label="Close">×</button>';
+  $('drawer-h').innerHTML='<div style="min-width:0;flex:1"><h2 id="drawer-title">'+esc(c.name)+'</h2><div class="muted small">'+esc(c.code)+' · '+esc(cur)+' · '+esc(c.terms||p.terms||'no terms')+(c.partner?' · partner':'')+'</div><div class="row" style="margin-top:8px">'+runPill(c)+'<span class="pill pill-mute">'+esc(PAY_LABEL[c.pay])+'</span>'+(c.check?'<span class="pill pill-violet">CHECK</span>':'')+(isSnoozed(c.name)?'<span class="pill pill-mute">Snoozed</span>':'')+'</div></div><button class="x" onclick="closeDrawer()" aria-label="Close" title="Close (Esc)">×</button>';
   var nr=nextRunFor(c, today());
   var h='<div class="facts">'+fact('Overdue', money(c.overdue,cur), c.overdue>0?'amt-bad':'')+fact('Balance', money(c.balance,cur))+fact('Due by '+(nr?nr.short+' '+fmtDs(nr.date):'next run'), money(nr?dueBetween(c,today(),nr.date):0,cur), 'amt-warn')+
     fact('In query', money(c.queryAmt||0,cur), c.queryAmt?'':'')+fact('Credit limit', c.creditLimit?money0(c.creditLimit,cur)+(c.util!=null?' · '+Math.round(c.util)+'%':''):'—', c.overLimit?'amt-bad':'')+fact('Last paid', c.lastPay?fmtD(c.lastPay):'—')+'</div>';
@@ -3174,11 +3821,14 @@ function drawDrawer(){
   }
   // statement
   if(c.stmt){
-    var qs=queryInvoiceSet(c);
-    h+='<div class="h4">Statement · '+esc(c.stmt.file)+' · '+fmtTime(c.stmt.at)+'</div><div class="tbl-wrap" style="max-height:260px"><table class="tbl"><thead><tr><th>Doc</th><th>Ref</th><th>Due</th><th class="r">Open</th></tr></thead><tbody>'+c.stmt.items.map(function(it){
-      var d=fromYMD(it.due), od=it.amt>0&&d&&d<today(), q=qs[String(it.doc).toLowerCase()];
-      return '<tr><td class="mono">'+esc(it.doc)+(q?' <span class="pill pill-orange">query</span>':'')+'<div class="xs muted">'+esc(it.type)+'</div></td><td class="small">'+esc(it.ext||'')+'</td><td class="small '+(od?'amt-bad':'')+'">'+fmtD(d)+'</td><td class="r '+(od?'amt-bad':it.amt<0?'':'')+'">'+money(it.amt,cur)+'</td></tr>';
-    }).join('')+'</tbody></table></div>';
+    var qs=queryInvoiceSet(c), rep=c.stmt.report;
+    h+='<div class="h4">Statement · '+esc(c.stmt.file)+' · '+fmtTime(c.stmt.at)+'</div>';
+    if(rep) h+='<div class="stmt-sum"><span><b>'+c.stmt.items.length+'</b> lines</span><span>owed <b>'+money(rep.owed,cur)+'</b></span>'+(rep.creditTotal?'<span>credits <b>'+money(rep.creditTotal,cur)+'</b></span>':'')+'<span>open total <b>'+money(rep.total,cur)+'</b></span>'+(rep.printedTotal!=null?(rep.mismatch?'<span class="amt-bad">statement prints '+money(rep.printedTotal,cur)+'</span>':'<span class="amt-ok">matches statement total ✓</span>'):'')+(rep.skippedCount?'<span class="muted">'+rep.skippedCount+' not used</span>':'')+'</div>';
+    if(stmtStale(c)) h+='<div class="warnbox small">Saved before the latest ledger import'+(c.ar&&Math.abs(stmtTotal(c)-c.ar.balance)>=1?' and no longer adds up to the ledger balance ('+money(c.ar.balance,cur)+') — attach a fresh statement.':' — still matches the ledger balance.')+'</div>';
+    h+='<div class="tbl-wrap" style="max-height:300px"><table class="tbl"><thead><tr><th>Doc</th><th>Ref</th><th>Due</th><th class="r">Open</th></tr></thead><tbody>'+c.stmt.items.map(function(it){
+      var d=stmtDue(it,c), od=it.amt>0&&d&&d<today(), q=qs[String(it.doc).toLowerCase()];
+      return '<tr><td class="mono">'+esc(it.doc)+(q?' <span class="pill pill-orange">query</span>':'')+'<div class="xs muted">'+esc(it.type)+(it.inv?' · '+fmtD(fromYMD(it.inv)):'')+'</div></td><td class="small">'+esc(it.ext||'')+(it.desc?'<div class="xs muted">'+esc(it.desc.slice(0,60))+'</div>':'')+'</td><td class="small '+(od?'amt-bad':'')+'">'+fmtD(d)+(!it.due&&d?'<div class="xs muted">from terms</div>':'')+'</td><td class="r '+(od?'amt-bad':'')+'">'+money(it.amt,cur)+'</td></tr>';
+    }).join('')+'</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">'+money(stmtTotal(c),cur)+'</td></tr></tfoot></table></div><div class="row" style="margin-top:6px"><button class="btn btn-xs" onclick="stmtLines('+jsArg(c.name)+')">Every line &amp; what was skipped</button></div>';
   }
   // remittances
   if(c.remits&&c.remits.length) h+='<div class="h4">Remittances</div>'+c.remits.slice(0,6).map(function(r){ return '<div class="row small" style="padding:4px 0;border-bottom:1px solid var(--line)"><span class="amt-ok">'+money(r.amount,r.currency)+'</span><span>paying '+fmtD(fromYMD(r.payDate))+'</span><span class="muted">'+esc(r.status)+'</span>'+(r.msgId?'<a href="'+gmailLink(r.msgId)+'" target="_blank" rel="noopener">open</a>':'')+'</div>'; }).join('');
@@ -3212,8 +3862,25 @@ function saveProfileFromDrawer(){
 }
 function stmtUploadFor(name){
   var i=document.createElement('input'); i.type='file'; i.accept='.pdf,.xlsx,.xls';
-  i.onchange=function(){ if(!i.files[0]) return; importStatementGuess(i.files[0], name).then(function(){ rebuild(); drawDrawer(); toast('ok','Statement saved', name); }).catch(function(e){ toast('err','Statement not read', e.message); }); };
+  i.onchange=function(){ if(!i.files[0]) return; importStatementGuess(i.files[0], name).then(function(r){ rebuild(); drawDrawer(); renderTab(); var c=custByName(name); var rep=c&&c.stmt&&c.stmt.report; toast(rep&&rep.mismatch?'warn':'ok','Statement saved — '+name, stmtSummary(rep)); }).catch(function(e){ toast('err','Statement not read', e.message); }); };
   i.click();
+}
+
+// every line read from the statement, plus anything that was not used and why
+function stmtLines(name){
+  var c=custByName(name); if(!c||!c.stmt){ toast('warn','No statement on file',''); return; }
+  var cur=c.currency, rep=c.stmt.report||{}, t=today();
+  var rows=c.stmt.items.map(function(it,i){
+    var d=stmtDue(it,c), st=it.amt<=0?'Credit':(!d||d<t?'Overdue':'Not yet due');
+    return '<tr><td class="muted xs">'+(i+1)+'</td><td class="mono">'+esc(it.doc)+'</td><td class="small">'+esc(it.type)+'</td><td class="small">'+esc(it.ext||'')+(it.desc?'<div class="xs muted">'+esc(it.desc)+'</div>':'')+'</td><td class="small nowrap">'+(it.inv?fmtD(fromYMD(it.inv)):'—')+'</td><td class="small nowrap">'+(d?fmtD(d):'—')+'</td><td><span class="pill pill-'+(st==='Overdue'?'bad':st==='Credit'?'info':'mute')+'">'+st+'</span></td><td class="r nowrap">'+(it.orig!=null&&it.orig!==it.amt?'<div class="xs muted">of '+money(it.orig,cur)+'</div>':'')+money(it.amt,cur)+'</td><td class="xs muted">'+(it.page!=null?esc(String(it.page)):'')+'</td></tr>';
+  }).join('');
+  var sk=(rep.skipped||[]).map(function(x){ return '<tr><td class="xs muted nowrap">'+esc(String(x.page==null?'':x.page))+'</td><td class="small">'+esc(x.text)+'</td><td class="small muted">'+esc(x.reason)+'</td></tr>'; }).join('');
+  openModal('Statement lines — '+name,
+    '<div class="muted small" style="margin-bottom:8px">'+esc(c.stmt.file||'')+' · saved '+fmtTime(c.stmt.at)+(rep.format?' · '+esc(rep.format):'')+(rep.columns?'<div class="xs">Columns: '+esc(rep.columns)+'</div>':'')+'</div>'+
+    (rep.printedTotal!=null?(rep.mismatch?'<div class="badbox">Read '+money(rep.total,cur)+' but the statement prints '+money(rep.printedTotal,cur)+' ('+esc(rep.printedLabel||'total')+'). Difference '+money(round2(rep.printedTotal-rep.total),cur)+' — check the lines below and the skipped list.</div>':'<div class="okbox">All lines add up to '+money(rep.total,cur)+' — the same as the total printed on the statement.</div>'):'<div class="muted small">No total printed on the statement to check against. Lines add up to '+money(stmtTotal(c),cur)+'.</div>')+
+    '<div class="tbl-wrap" style="max-height:52vh;margin-top:10px"><table class="tbl"><thead><tr><th>#</th><th>Doc</th><th>Type</th><th>Ref / description</th><th>Date</th><th>Due</th><th>Status</th><th class="r">Open</th><th>Page</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td></td><td colspan="6">'+c.stmt.items.length+' lines</td><td class="r">'+money(stmtTotal(c),cur)+'</td><td></td></tr></tfoot></table></div>'+
+    (sk?'<details style="margin-top:12px"><summary class="b">Lines not used ('+(rep.skippedCount||0)+')</summary><div class="tbl-wrap" style="max-height:30vh"><table class="tbl"><thead><tr><th>Page</th><th>Text</th><th>Why</th></tr></thead><tbody>'+sk+'</tbody></table></div></details>':''),
+    {xwide:true, foot:'<button class="btn" onclick="closeModal()">Close</button><button class="btn" onclick="closeModal();stmtUploadFor('+jsArg(name)+')">Replace statement</button>'});
 }
 
 // ── 84-forecast-ui.js ──
@@ -3448,18 +4115,28 @@ function exportQueries(){
 
 // ── 86-remits-ui.js ──
 // ═══════════════════════════════════════════════════════════════════
-// REMITTANCES page
+// REMITTANCES page — one card per remittance: who, when it lands, how much, which invoices.
+// Confirm logs the payment; Undo / "Back to confirm" takes it back out. Nothing is lost.
 // ═══════════════════════════════════════════════════════════════════
-var RMF={status:'new'};
+var RMF={status:'new', q:''};
 function remitScanClick(){
   Gmail.use(function(){
     toast('info','Scanning your Remits folder…','');
+    var p=$('rm-prog'); if(p) p.textContent='Scanning…';
     return scanRemitsFolder({progress:function(d,t){ var e=$('rm-prog'); if(e) e.textContent='Reading '+d+' of '+t+'…'; }}).then(function(r){
       routineTick('remits');
       toast('ok','Remits folder scanned', r.added+' new remittance'+(r.added===1?'':'s')+' from '+r.found+' emails in “'+r.label+'”');
+      if(r.added) RMF.status='new';
       rebuild(); renderAll();
-    }).catch(function(e){ toast('err','Remits scan failed', e.message); });
+    }).catch(function(e){ toast('err','Remits scan failed', e.message); var p2=$('rm-prog'); if(p2) p2.textContent='Scan failed — '+e.message; });
   });
+}
+function remitMatchesFilter(r){
+  var s=RMF.status;
+  if(s==='unmatched' && (r.customer || r.status==='ignored')) return false;
+  if(s!=='all' && s!=='unmatched' && r.status!==s) return false;
+  var q=(RMF.q||'').trim().toLowerCase(); if(!q) return true;
+  return [r.customer, r.from, r.subject, String(r.amount), (r.invoices||[]).join(' '), (r.files||[]).join(' ')].join(' ').toLowerCase().indexOf(q)>=0;
 }
 function renderRemits(){
   rebuildIfNeeded();
@@ -3469,47 +4146,127 @@ function renderRemits(){
   var unmatched=all.filter(function(r){ return r.status!=='ignored' && !r.customer; });
   var thisWeek=all.filter(function(r){ var d=fromYMD(r.payDate); return r.status!=='ignored' && d>=ws && d<=addDays(ws,6); });
   var scan=devGet('pp_remit_scan','');
-  var h='<div class="row" style="margin-bottom:14px"><button class="btn btn-p" onclick="remitScanClick()">Scan “'+esc(settings().remitLabel)+'” folder in Gmail</button><button class="btn" onclick="remitUpload()">Upload remittance files</button><span class="muted small" id="rm-prog">'+(scan?'Last scan '+fmtTime(scan):'Not scanned yet on this device')+' · looks back '+settings().remitDays+' days</span></div>';
+  var cnt={new:nw.length, confirmed:all.filter(function(r){ return r.status==='confirmed'; }).length, unmatched:unmatched.length, ignored:all.filter(function(r){ return r.status==='ignored'; }).length, all:all.length};
+  var h='<div class="row" style="margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-p edit-only" onclick="remitScanClick()">Scan “'+esc(settings().remitLabel)+'” folder in Gmail</button><button class="btn edit-only" onclick="remitUpload()">Upload remittance files</button><button class="btn edit-only" onclick="remitAddForm()">+ Add by hand</button><span class="muted small" id="rm-prog">'+(scan?'Last scan '+fmtTime(scan):'Not scanned yet on this device')+' · looks back '+settings().remitDays+' days</span></div>';
   h+='<div class="kpis" style="margin-bottom:16px">'+kpi('To confirm', nw.length, money0(sum(nw,function(r){ return fxToGBP(r.amount,r.currency); }))+' (in £)', nw.length?'k-warn':'k-ok', "RMF.status='new';renderRemits()")+
-    kpi('Paying this week', money0(sum(thisWeek,function(r){ return fxToGBP(r.amount,r.currency); })), thisWeek.length+' remittances','k-ok')+
-    kpi('Confirmed this week', money0(sum(conf,function(r){ return fxToGBP(r.amount,r.currency); })), conf.length+' logged as payments','k-brand')+
+    kpi('Paying this week', money0(sum(thisWeek,function(r){ return fxToGBP(r.amount,r.currency); })), thisWeek.length+' remittance'+(thisWeek.length===1?'':'s'),'k-ok', "RMF.status='all';renderRemits()")+
+    kpi('Confirmed this week', money0(sum(conf,function(r){ return fxToGBP(r.amount,r.currency); })), conf.length+' logged as payments','k-brand', "RMF.status='confirmed';renderRemits()")+
     kpi('Unmatched', unmatched.length, 'pick the customer', unmatched.length?'k-bad':'', "RMF.status='unmatched';renderRemits()")+'</div>';
-  var list=all.filter(function(r){ return RMF.status==='all'?true:RMF.status==='unmatched'?(!r.customer&&r.status!=='ignored'):r.status===RMF.status; });
-  h+='<div class="grid g-main"><div class="card"><div class="card-h"><div class="seg">'+[['new','To confirm'],['confirmed','Confirmed'],['unmatched','Unmatched'],['ignored','Ignored'],['all','All']].map(function(s){ return '<button class="'+(RMF.status===s[0]?'on':'')+'" onclick="RMF.status='+jsArg(s[0])+';renderRemits()">'+s[1]+'</button>'; }).join('')+'</div>'+
-    (nw.length?'<div class="acts"><button class="btn btn-s" onclick="confirmAllMatched()">Confirm all high-confidence</button></div>':'')+'</div>'+
-    (list.length?'<div class="tbl-wrap tbl-scroll"><table class="tbl"><thead><tr><th>Received</th><th>Customer</th><th>Pays on</th><th class="r">Amount</th><th>Invoices</th><th></th></tr></thead><tbody>'+list.slice(0,300).map(remitRow).join('')+'</tbody></table></div>'+custDatalist()
-     :'<div class="empty"><b>'+(RMF.status==='new'?'Nothing to confirm':'Nothing here')+'</b>Scan your Gmail Remits folder or upload remittance PDFs.</div>')+'</div>';
+  var list=all.filter(remitMatchesFilter);
+  h+='<div class="card"><div class="card-h"><div class="seg">'+[['new','To confirm'],['unmatched','Unmatched'],['confirmed','Confirmed'],['ignored','Ignored'],['all','All']].map(function(s){ return '<button class="'+(RMF.status===s[0]?'on':'')+'" onclick="RMF.status='+jsArg(s[0])+';renderRemits()">'+s[1]+' <span class="muted">'+cnt[s[0]]+'</span></button>'; }).join('')+'</div>'+
+    '<div class="acts"><input id="rm-q" style="width:200px;height:30px" placeholder="Find customer, amount, invoice…" value="'+esc(RMF.q)+'" oninput="RMF.q=this.value;remitList()">'+
+    (nw.some(function(r){ return r.customer && r.conf==='high' && r.amount>0; })?'<button class="btn btn-s edit-only" onclick="confirmAllMatched()">Confirm all high-confidence</button>':'')+'</div></div>'+
+    '<div class="card-b" id="rm-list"></div></div>'+custDatalist();
   // who still needs chasing on the live run
   var run=currentRun(), rows=run?runRows(run).filter(function(r){ return r.status==='chase'; }):[];
-  h+='<div class="card"><div class="card-h"><h3>Still to pay — '+(run?run.label.toLowerCase()+' run '+fmtDs(run.date):'')+'</h3><span class="muted">overdue, no remittance yet</span></div>'+
-    (rows.length?rows.slice(0,25).map(function(r){ return '<div class="task"><div class="t-main"><div class="t-name">'+cname(r.c)+'</div><div class="t-why">'+(r.chased?'chased '+relDays(new Date(r.chases[0].date)):'<span class="amt-bad">not chased yet</span>')+(r.reply?' · replied':'')+'</div></div><div class="t-amt amt-bad">'+money0(r.outstanding,r.c.currency)+'</div><div class="t-acts"><button class="btn btn-xs btn-p" onclick="openComposer('+jsArg(r.c.name)+')">Email</button></div></div>'; }).join('')+(rows.length>25?'<div class="card-b small muted">+'+(rows.length-25)+' more on the run checklist</div>':'')
-     :'<div class="empty" style="padding:20px"><b>Everyone overdue has remitted ✓</b></div>')+'</div></div>';
+  h+='<div class="card" style="margin-top:16px"><div class="card-h"><h3>Still to pay — '+(run?esc(run.label.toLowerCase())+' run '+fmtDs(run.date):'')+'</h3><span class="muted">overdue, no remittance yet · '+rows.length+'</span></div>'+
+    (rows.length?'<div class="tbl-wrap tbl-scroll" style="max-height:420px"><table class="tbl"><thead><tr><th>Customer</th><th>Chased</th><th class="r">Overdue</th><th></th></tr></thead><tbody>'+rows.map(function(r){ return '<tr><td class="cust">'+cname(r.c)+'</td><td class="small">'+(r.chased?'chased '+relDays(new Date(r.chases[0].date)):'<span class="amt-bad">not chased yet</span>')+(r.reply?' · replied':'')+'</td><td class="r amt-bad">'+money0(r.outstanding,r.c.currency)+'</td><td class="r nowrap"><button class="btn btn-xs btn-p" onclick="openComposer('+jsArg(r.c.name)+')">Email</button></td></tr>'; }).join('')+'</tbody></table></div>'
+     :'<div class="empty" style="padding:20px"><b>Everyone overdue has remitted ✓</b></div>')+'</div>';
   $('p-remits').innerHTML=h;
+  remitList();
 }
-function remitRow(r){
-  var c=custByName(r.customer), conf={high:'ok',medium:'warn',low:'bad',none:'bad'}[r.conf||'none'];
+function remitList(){
+  var list=remits().filter(remitMatchesFilter);
+  if(!list.length){ setHTML('rm-list','<div class="empty"><b>'+(RMF.q?'No remittance matches “'+esc(RMF.q)+'”':RMF.status==='new'?'Nothing to confirm':'Nothing here')+'</b>'+(RMF.status==='new'&&!RMF.q?'Scan your Gmail Remits folder, upload remittance files or add one by hand.':'')+'</div>'); return; }
+  setHTML('rm-list','<div class="rm-list">'+list.slice(0,300).map(remitCard).join('')+'</div>'+(list.length>300?'<div class="muted small" style="margin-top:8px">Showing 300 of '+list.length+' — use the search box.</div>':''));
+}
+function remitCard(r){
+  var c=custByName(r.customer), confCls={high:'ok',medium:'warn',low:'bad',none:'bad'}[r.conf||'none'];
   var link=r.msgId?' · <a href="'+gmailLink(r.msgId)+'" target="_blank" rel="noopener">open email</a>':'';
-  var mismatch=''; if(c){ var od=c.overdue+dueBetween(c,today(),addDays(today(),21)); if(r.amount>0 && od>0 && Math.abs(r.amount-c.overdue)/Math.max(1,c.overdue)>0.02 && r.amount<c.overdue) mismatch='<div class="xs amt-warn">short of overdue '+money0(c.overdue,c.currency)+' by '+money0(c.overdue-r.amount,c.currency)+'</div>'; }
-  return '<tr'+(r.status==='ignored'?' class="done"':'')+'><td class="small nowrap">'+fmtTime(r.received)+'<div class="xs muted" title="'+esc(r.subject)+'">'+esc((r.from||'').replace(/<.*>/,'').trim().slice(0,28)||esc(r.src))+link+'</div></td>'+
-    '<td style="min-width:220px"><input list="cust-dl" value="'+esc(r.customer||'')+'" placeholder="Choose customer" style="height:30px" onchange="setRemit('+jsArg(r.id)+',{customer:(custByName(this.value)||{}).name||this.value});rebuild();renderRemits()"><div class="xs"><span class="pill pill-'+conf+'" style="height:17px">'+esc(r.how||'')+'</span></div></td>'+
-    '<td class="nowrap"><input type="date" value="'+esc(r.payDate)+'" style="height:30px;width:140px" onchange="setRemit('+jsArg(r.id)+',{payDate:this.value,dateSrc:\'set by you\'});renderRemits()"><div class="xs muted" title="'+esc(r.dateSrc||'')+'" style="max-width:190px;overflow:hidden;text-overflow:ellipsis">'+esc(r.dateSrc||'')+'</div></td>'+
-    '<td class="r nowrap"><input type="number" step="0.01" value="'+r.amount+'" style="height:30px;width:120px;text-align:right" onchange="setRemit('+jsArg(r.id)+',{amount:num(this.value)});renderRemits()"><div class="xs muted">'+esc(r.currency||'')+'</div>'+mismatch+'</td>'+
-    '<td class="small" style="max-width:180px"><span class="mono" title="'+esc((r.invoices||[]).join(', '))+'">'+esc((r.invoices||[]).slice(0,4).join(', '))+((r.invoices||[]).length>4?' +'+((r.invoices||[]).length-4):'')+'</span>'+(r.files&&r.files.length?'<div class="xs muted">📎 '+esc(r.files.join(', ').slice(0,40))+'</div>':'')+'</td>'+
-    '<td class="nowrap">'+(r.status==='new'?'<button class="btn btn-xs btn-p" onclick="confirmRemit('+jsArg(r.id)+')">Confirm</button> <button class="btn btn-xs" onclick="setRemit('+jsArg(r.id)+',{status:\'ignored\'});rebuild();renderAll()">Ignore</button>':'<span class="pill pill-'+(r.status==='confirmed'?'ok':'mute')+'">'+esc(r.status)+'</span> <button class="btn btn-xs btn-ghost" onclick="setRemit('+jsArg(r.id)+',{status:\'new\'});renderAll()">Undo</button>')+'</td></tr>';
+  var cur=r.currency||(c?c.currency:'GBP');
+  var note='';
+  if(c && r.amount>0 && c.overdue>0 && r.amount<c.overdue-0.01) note='<div class="xs amt-warn">'+money0(c.overdue-r.amount,c.currency)+' short of the '+money0(c.overdue,c.currency)+' overdue</div>';
+  else if(c && r.amount>0 && Math.abs(r.amount-c.overdue)<0.01) note='<div class="xs amt-ok">clears the overdue exactly</div>';
+  var st=r.status==='confirmed'?'confirmed':r.status==='ignored'?'ignored':!r.customer?'unmatched':'new';
+  var stPill={confirmed:'<span class="pill pill-ok">Confirmed · payment logged</span>', ignored:'<span class="pill pill-mute">Ignored</span>', unmatched:'<span class="pill pill-bad">Pick the customer</span>', new:'<span class="pill pill-warn">To confirm</span>'}[st];
+  var inv=(r.invoices||[]);
+  var h='<div class="rm st-'+st+'" data-id="'+esc(r.id)+'">'+
+    '<div class="who">'+(c?cname(c):'<b class="amt-bad">'+(r.customer?esc(r.customer)+' (not on ledger)':'Customer not recognised')+'</b>')+
+      '<div class="xs muted" title="'+esc(r.subject||'')+'">'+esc(((r.from||'').replace(/<.*>/,'').trim()||r.src||'').slice(0,40))+' · received '+fmtTime(r.received)+link+'</div>'+
+      '<div class="xs" style="margin-top:3px">'+stPill+(r.customer?' <span class="pill pill-'+confCls+'" title="How PayPilot matched the customer">'+esc(r.how||'')+'</span>':'')+'</div></div>'+
+    '<div><div class="xs muted">Pays on</div><b>'+(r.payDate?fmtDw(fromYMD(r.payDate)):'—')+'</b><div class="xs muted" title="'+esc(r.dateSrc||'')+'" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">'+esc(r.dateSrc||'')+'</div></div>'+
+    '<div><div class="amt">'+money(r.amount,cur)+'</div>'+note+(inv.length?'<div class="xs mono muted" title="'+esc(inv.join(', '))+'">'+esc(inv.slice(0,5).join(', '))+(inv.length>5?' +'+(inv.length-5):'')+'</div>':'')+(r.files&&r.files.length?'<div class="xs muted">📎 '+esc(r.files.join(', ').slice(0,50))+'</div>':'')+'</div>'+
+    '<div class="acts edit-only">'+
+      (st==='new'?'<button class="btn btn-xs btn-p" onclick="confirmRemit('+jsArg(r.id)+')">Confirm</button>':'')+
+      (st==='unmatched'?'<button class="btn btn-xs btn-p" onclick="remitEdit('+jsArg(r.id)+')">Choose customer</button>':'')+
+      (st==='confirmed'||st==='ignored'?'<button class="btn btn-xs" onclick="remitUnconfirm('+jsArg(r.id)+')">Back to confirm</button>':'')+
+      '<button class="btn btn-xs" onclick="remitEdit('+jsArg(r.id)+')">Edit</button>'+
+      (st!=='ignored'&&st!=='confirmed'?'<button class="btn btn-xs btn-ghost" onclick="remitIgnore('+jsArg(r.id)+')">Ignore</button>':'')+
+      '<button class="btn btn-xs btn-ghost" title="Delete this remittance" onclick="remitDelete('+jsArg(r.id)+')">Delete</button>'+
+    '</div>';
+  if(st==='unmatched'){
+    var sg=remitSuggest(r,3);
+    h+='<div class="sugg edit-only"><span class="xs muted">'+(sg.length?'Could be:':'No likely match — use Choose customer.')+'</span>'+sg.map(function(x){ return '<button class="chip chip-btn" onclick="remitAssign('+jsArg(r.id)+','+jsArg(x.c.name)+')" title="'+esc(x.why)+'">'+esc(x.c.name)+' <span class="muted">· '+esc(x.why)+'</span></button>'; }).join('')+'</div>';
+  }
+  if(r.snippet) h+='<details class="sugg" style="display:block"><summary class="xs muted" style="cursor:pointer">What the remittance says</summary><div class="xs" style="white-space:pre-wrap;margin-top:4px;max-height:160px;overflow:auto">'+esc(r.snippet)+'</div></details>';
+  return h+'</div>';
 }
+function remitUndoToast(title, msg, snap){ toast('ok', title, msg, function(){ restoreRemit(snap); rebuild(); renderAll(); toast('info','Undone',''); }); }
 function confirmRemit(id){
   var r=remits().find(function(x){ return x.id===id; }); if(!r) return;
-  if(!r.customer){ toast('warn','Choose the customer first',''); return; }
-  setRemit(id,{status:'confirmed'}); rebuild(); renderAll();
-  toast('ok','Remittance confirmed', r.customer+' '+money(r.amount,r.currency)+' paying '+fmtD(fromYMD(r.payDate))+' — logged as a payment');
+  if(!r.customer){ toast('warn','Choose the customer first',''); remitEdit(id); return; }
+  if(!(r.amount>0)){ toast('warn','Enter the amount first',''); remitEdit(id); return; }
+  var snap=setRemit(id,{status:'confirmed'}); rebuild(); renderAll();
+  remitUndoToast('Remittance confirmed', r.customer+' '+money(r.amount,r.currency)+' paying '+fmtD(fromYMD(r.payDate))+' — logged as a payment', snap);
+}
+function remitUnconfirm(id){ var snap=setRemit(id,{status:'new'}); if(!snap) return; rebuild(); renderAll(); remitUndoToast('Back to “To confirm”', snap.status==='confirmed'?'The payment it logged has been taken off':'', snap); }
+function remitIgnore(id){ var snap=setRemit(id,{status:'ignored'}); if(!snap) return; rebuild(); renderAll(); remitUndoToast('Ignored', snap.customer||snap.subject||'', snap); }
+function remitAssign(id, name){ var snap=setRemit(id,{customer:name}); if(!snap) return; rebuild(); renderAll(); remitUndoToast('Customer set', name+' — now confirm it', snap); }
+function remitDelete(id){
+  var res=deleteRemit(id); if(!res) return; rebuild(); renderAll();
+  toast('ok','Remittance deleted', res.wasConfirmed?'The payment it logged was taken off too':'', function(){ restoreRemit(res.snap); if(res.wasConfirmed) setRemit(res.snap.id,{status:'confirmed'}); rebuild(); renderAll(); toast('info','Restored',''); });
+}
+function remitEdit(id){
+  var r=remits().find(function(x){ return x.id===id; }); if(!r) return;
+  var sg=remitSuggest(r,4);
+  openModal('Remittance — '+(r.customer||'choose the customer'),
+    (sg.length&&!r.customer?'<div class="row" style="margin-bottom:10px">'+sg.map(function(x){ return '<button class="btn btn-s" data-n="'+esc(x.c.name)+'" title="'+esc(x.why)+'">'+esc(x.c.name)+'</button>'; }).join('')+'</div>':'')+
+    '<div class="form-grid"><label class="fld"><span>Customer</span><input id="re-cust" list="cust-dl" value="'+esc(r.customer||'')+'" placeholder="Start typing…"></label>'+
+    '<label class="fld"><span>Money lands on</span><input id="re-date" type="date" value="'+esc(r.payDate||ymd(today()))+'"></label>'+
+    '<label class="fld"><span>Amount</span><input id="re-amt" type="number" step="0.01" value="'+(r.amount||'')+'"></label>'+
+    '<label class="fld"><span>Currency</span><select id="re-cur">'+['GBP','EUR','USD'].map(function(x){ return '<option'+((r.currency||'GBP')===x?' selected':'')+'>'+x+'</option>'; }).join('')+'</select></label>'+
+    '<label class="fld" style="grid-column:1/-1"><span>Invoices paid (optional)</span><input id="re-inv" value="'+esc((r.invoices||[]).join(', '))+'" placeholder="17200101, 17200188"></label></div>'+
+    (r.dateSrc?'<div class="muted xs">Date read from: '+esc(r.dateSrc)+'</div>':'')+custDatalist(),
+    {foot:'<button class="btn" onclick="closeModal()">Cancel</button>'+(r.status!=='confirmed'?'<button class="btn" id="re-save">Save</button><button class="btn btn-p" id="re-conf">Save &amp; confirm</button>':'<button class="btn btn-p" id="re-save">Save</button>')});
+  qsa('#modal-body button[data-n]').forEach(function(b){ b.onclick=function(){ $('re-cust').value=b.dataset.n; }; });
+  var save=function(confirmIt){
+    var name=$('re-cust').value.trim(), c=custByName(name);
+    if(name && !c){ toast('warn','Pick a customer from the list','“'+name+'” is not on the ledger'); return; }
+    if(confirmIt && !c){ toast('warn','Choose the customer first',''); return; }
+    var amt=num($('re-amt').value); if(confirmIt && !(amt>0)){ toast('warn','Enter the amount',''); return; }
+    var patch={customer:c?c.name:'', payDate:$('re-date').value||r.payDate, amount:amt, currency:$('re-cur').value, invoices:$('re-inv').value.split(/[\s,;]+/).filter(Boolean)};
+    if(patch.payDate!==r.payDate) patch.dateSrc='set by you';
+    var snap=setRemit(id, patch); if(confirmIt) setRemit(id,{status:'confirmed'});
+    closeModal(); rebuild(); renderAll();
+    remitUndoToast(confirmIt?'Saved and confirmed':'Saved', (c?c.name:'')+' '+money(amt,patch.currency), snap);
+  };
+  $('re-save').onclick=function(){ save(false); };
+  if($('re-conf')) $('re-conf').onclick=function(){ save(true); };
+}
+function remitAddForm(){
+  askForm('Add a remittance by hand',[
+    {k:'customer', label:'Customer', v:'', ph:'Start typing…'},
+    {k:'payDate', label:'Money lands on', type:'date', v:ymd(today())},
+    {k:'amount', label:'Amount', type:'number', step:'0.01', v:''},
+    {k:'invoices', label:'Invoices paid (optional)', v:'', ph:'17200101, 17200188'},
+    {k:'note', label:'Note', type:'textarea', v:''}
+  ], function(v){
+    var c=custByName(v.customer); if(!c){ toast('warn','Pick a customer from the list',''); return false; }
+    if(!(num(v.amount)>0)){ toast('warn','Enter the amount',''); return false; }
+    var r=addRemitManual(v); RMF.status='new'; rebuild(); renderAll();
+    toast('ok','Remittance added', c.name+' '+money(r.amount,r.currency)+' — confirm it when you are happy', function(){ deleteRemit(r.id); rebuild(); renderAll(); });
+  }, 'Add');
+  var inp=$('af-customer'); if(inp){ inp.setAttribute('list','cust-dl'); inp.insertAdjacentHTML('afterend', custDatalist()); }
 }
 function confirmAllMatched(){
-  var n=0; remits().filter(function(r){ return r.status==='new' && r.customer && r.conf==='high' && r.amount>0; }).forEach(function(r){ setRemit(r.id,{status:'confirmed'}); n++; });
-  rebuild(); renderAll(); toast('ok', n+' remittance'+(n===1?'':'s')+' confirmed','Check the rest one by one');
+  var list=remits().filter(function(r){ return r.status==='new' && r.customer && r.conf==='high' && r.amount>0; });
+  var snaps=list.map(function(r){ return setRemit(r.id,{status:'confirmed'}); });
+  rebuild(); renderAll();
+  toast('ok', list.length+' remittance'+(list.length===1?'':'s')+' confirmed','Check the rest one by one', function(){ snaps.forEach(function(s){ if(s) restoreRemit(s); }); rebuild(); renderAll(); toast('info','Undone',''); });
 }
 function remitUpload(){
-  var i=document.createElement('input'); i.type='file'; i.multiple=true; i.accept='.pdf,.xlsx,.xls,.csv,.txt,.html';
-  i.onchange=function(){ importRemitFiles(Array.prototype.slice.call(i.files)).then(function(n){ toast('ok', n+' remittance'+(n===1?'':'s')+' read','Check the customer, date and amount, then confirm'); rebuild(); renderAll(); }); };
+  var i=document.createElement('input'); i.type='file'; i.multiple=true; i.accept='.pdf,.xlsx,.xls,.csv,.txt,.html,.htm';
+  i.onchange=function(){ importRemitFiles(Array.prototype.slice.call(i.files)).then(function(n){ toast('ok', n+' remittance'+(n===1?'':'s')+' read','Check the customer, date and amount, then confirm'); RMF.status='new'; rebuild(); renderAll(); }); };
   i.click();
 }
 
@@ -4218,9 +4975,10 @@ function statementPdf(c, run){
   var J=pdfLib(); if(!J||!c.stmt) return null;
   var doc=pdfDoc('Statement of account', c.name+(c.code?' ('+c.code+')':'')+' · as at '+fmtD(today()));
   var t=today(), rd=run?run.date:addDays(t,7), qs=queryInvoiceSet(c);
-  var items=c.stmt.items.slice().sort(function(a,b){ return (a.due||'')<(b.due||'')?-1:1; });
-  var stOf=function(it){ var d=fromYMD(it.due); if(it.amt<0) return 'Credit'; if(!d||d<t) return 'Overdue'; if(d<=rd) return 'Becoming due'; return 'Not yet due'; };
-  var y=pdfTable(doc, ['Document','Your ref.','Type','Due date','Status','Amount'], items.map(function(it){ return [it.doc, it.ext||'', it.type, it.due?fmtD(fromYMD(it.due)):'', stOf(it)+(qs[String(it.doc).toLowerCase()]?' · query':''), money(it.amt,c.currency)]; }),
+  var dueOf=function(it){ var d=stmtDue(it,c); return d?ymd(d):''; };
+  var items=c.stmt.items.slice().sort(function(a,b){ return dueOf(a)<dueOf(b)?-1:1; });
+  var stOf=function(it){ var d=stmtDue(it,c); if(it.amt<0) return 'Credit'; if(!d||d<t) return 'Overdue'; if(d<=rd) return 'Becoming due'; return 'Not yet due'; };
+  var y=pdfTable(doc, ['Document','Your ref.','Type','Due date','Status','Amount'], items.map(function(it){ return [it.doc, it.ext||'', it.type, dueOf(it)?fmtD(fromYMD(dueOf(it))):'', stOf(it)+(qs[String(it.doc).toLowerCase()]?' · query':''), money(it.amt,c.currency)]; }),
     {paint:function(d){ if(d.section!=='body') return; var s=stOf(items[d.row.index]); if(s==='Overdue'){ d.cell.styles.fillColor=[253,232,232]; if(d.column.index>=3) d.cell.styles.textColor=[185,28,28]; } else if(s==='Becoming due'){ d.cell.styles.fillColor=[255,244,214]; } if(d.column.index===5) d.cell.styles.halign='right'; }});
   var tot=sum(items,function(i){ return i.amt; }), od=sum(items.filter(function(i){ return stOf(i)==='Overdue'; }),function(i){ return i.amt; });
   pdfTable(doc, ['', ''], [['Total overdue', money(od,c.currency)],['Balance on account', money(tot,c.currency)]], {startY:y+12, extra:{showHead:'never', columnStyles:{0:{fontStyle:'bold'},1:{halign:'right',fontStyle:'bold'}}, tableWidth:260, margin:{left:doc.internal.pageSize.getWidth()-292}}});
