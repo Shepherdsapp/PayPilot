@@ -664,7 +664,7 @@ var DEFAULT_PROFILES = [];
 // Core utilities: dates, money, escaping, DOM helpers, toasts, modals
 // ═══════════════════════════════════════════════════════════════════
 var APP_NAME = 'PayPilot';
-var APP_BUILD = 'v2026-10-29.1';
+var APP_BUILD = 'v2026-10-29.2';
 // Cloud sync worker (URL is not secret). The sync KEY is never stored in this file —
 // it is entered once per device in Settings and kept in that browser only.
 var CLOUD_DEFAULT_URL = 'https://paypilot.8pavii.workers.dev';
@@ -1825,15 +1825,16 @@ function stLineToRecord(L, cols){
   var rec={cells:{}, nums:{}, dates:{}, texts:[]};
   var amtCols=cols.filter(function(c){ return ST_AMTK[c.kind]; }), dateCols=cols.filter(function(c){ return c.kind==='post'||c.kind==='due'; });
   // ints sitting under an amount column (e.g. "1200") count as amounts
-  toks.forEach(function(t){ if(t.k==='int'){ var near=amtCols.some(function(c){ return Math.abs(t.x1-c.x1)<Math.max(14,t.cw*4); }); if(near && /,/.test(t.t)) t.k='amt'; } });
+  // whole numbers right under an amount heading are amounts too ("474", "1020" in a Debit Amount column)
+  toks.forEach(function(t){ if(t.k==='int'){ var near=amtCols.some(function(c){ return Math.abs(t.x1-c.x1)<Math.max(14,t.cw*4); }); if(near && (/,/.test(t.t) || t.t.replace(/,/g,'').length<=7)){ t.k='amt'; t.intAmt=true; } } });
   // amounts → nearest amount column by right edge, one value per column
   var amts=toks.filter(function(t){ return t.k==='amt'; }), used={};
   if(amtCols.length){
     amts.map(function(t){ return {t:t, opts:amtCols.map(function(c){ return {c:c, d:Math.min(Math.abs(t.x1-c.x1), Math.abs((t.x0+t.x1)/2-c.xc)*1.1)}; }).sort(function(a,b){ return a.d-b.d; })}; })
       .sort(function(a,b){ return a.opts[0].d-b.opts[0].d; })
-      .forEach(function(o){ for(var i=0;i<o.opts.length;i++){ var c=o.opts[i].c; if(!used[c.label+c.x0]){ used[c.label+c.x0]=1; rec.nums[c.kind]=(rec.nums[c.kind]==null?0:rec.nums[c.kind])+stAmt(o.t.t); o.t.done=1; return; } } });
+      .forEach(function(o){ for(var i=0;i<o.opts.length;i++){ var c=o.opts[i].c; if(!used[c.label+c.x0]){ used[c.label+c.x0]=1; rec.nums[c.kind]=(rec.nums[c.kind]==null?0:rec.nums[c.kind])+(o.t.intAmt?num(o.t.t):stAmt(o.t.t)); o.t.done=1; return; } } });
   }
-  rec.allAmts=amts.map(function(t){ return stAmt(t.t); });
+  rec.allAmts=amts.map(function(t){ return t.intAmt?num(t.t):stAmt(t.t); });
   // dates → nearest date column by centre (in order when counts match)
   var dts=toks.filter(function(t){ return t.k==='date'; });
   if(dateCols.length && dts.length===dateCols.length){ dts.forEach(function(t,i){ rec.dates[dateCols[i].kind]=toDate(t.t); }); }
@@ -1894,7 +1895,7 @@ function stReport(items, totals, skipped, meta){
 
 async function parseStatementPdf(ab){
   var lines=await stPdfLines(ab);
-  var items=[], totals=[], skipped=[], cols=null, prev=null, pendingNoAmt=null, headerSeen=false, headers=[], agingNext=false;
+  var items=[], totals=[], skipped=[], cols=null, prev=null, pendingNoAmt=null, headerSeen=false, headers=[], agingNext=false, ended={};
   var isHead=function(L){ var hasNum=L.toks.some(function(t){ var k=stKindOf(t); return k==='amt'||k==='date'; }); return !hasNum && stHeaderScore(L.toks.map(function(t){ return t.t.toLowerCase(); })); };
   var headPage={}; lines.forEach(function(L,ix){ if(headPage[L.page]==null && isHead(L)) headPage[L.page]=ix; });
   for(var i=0;i<lines.length;i++){
@@ -1915,6 +1916,7 @@ async function parseStatementPdf(ab){
     var text=L.text;
     var amtN=L.toks.filter(function(t){ return stKindOf(t)==='amt'; }).length;
     var docTok=L.toks.find(function(t){ return stIsDoc(t.t); });
+    if(ended[L.page] && !isHead(L)) continue;
     if(!cols || preTable){
       if(pendingNoAmt){ skipped.push({page:pendingNoAmt.page, text:pendingNoAmt.raw, reason:'no amount on this line'}); pendingNoAmt=null; }
       // before any heading: only look for a printed balance
@@ -1928,7 +1930,7 @@ async function parseStatementPdf(ab){
     }
     var isTotalLine=!hasDoc && ST_TOTAL.test(text) && !/^(payment|credit|invoice)/i.test(text);
     if(isTotalLine && amtN){
-      if(!ST_NOT_TOTAL.test(text)){ var av=rec.nums.rem!=null?rec.nums.rem:rec.nums.bal!=null?rec.nums.bal:rec.allAmts[rec.allAmts.length-1]; totals.push({label:text.replace(/[\d£$€,.()\-]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40), v:av, page:L.page}); }
+      if(!ST_NOT_TOTAL.test(text)){ ended[L.page]=true; var av=rec.nums.rem!=null?rec.nums.rem:rec.nums.bal!=null?rec.nums.bal:rec.allAmts[rec.allAmts.length-1]; totals.push({label:text.replace(/[\d£$€,.()\-]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40), v:av, page:L.page}); }
       else skipped.push({page:L.page, text:text, reason:'summary line'});
       prev=null; continue;
     }
