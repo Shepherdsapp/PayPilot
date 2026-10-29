@@ -650,7 +650,7 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand);cursor:poi
 <div id="toasts" aria-live="polite"></div>
 <div id="dropzone"><div class="dz-ico">⬇</div>Drop to import<div class="small" style="font-weight:600;color:var(--ink2)">Summary Aging · Aged Receivables · statements · remittances — <span class="ftag pdf">PDF</span> or <span class="ftag xls">Excel</span></div></div>
 <div class="tip" id="tip"></div>
-<input type="file" id="file-any" multiple hidden accept=".xlsx,.xls,.xlsm,.csv,.pdf" onchange="importAny(this.files);this.value=''">
+<input type="file" id="file-any" multiple hidden accept=".xlsx,.xls,.xlsm,.csv,.pdf,image/*" onchange="importAny(this.files);this.value=''">
 <script>
 if(typeof pdfjsLib!=='undefined') pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 </script>
@@ -664,7 +664,7 @@ var DEFAULT_PROFILES = [];
 // Core utilities: dates, money, escaping, DOM helpers, toasts, modals
 // ═══════════════════════════════════════════════════════════════════
 var APP_NAME = 'PayPilot';
-var APP_BUILD = 'v2026-10-29.3';
+var APP_BUILD = 'v2026-10-29.4';
 // Cloud sync worker (URL is not secret). The sync KEY is never stored in this file —
 // it is entered once per device in Settings and kept in that browser only.
 var CLOUD_DEFAULT_URL = 'https://paypilot.8pavii.workers.dev';
@@ -1641,7 +1641,9 @@ async function importLedgerFile(file, kind){
 }
 // Detect which report a file is from its header row
 async function detectLedgerKind(file){
-  if(/\.pdf$/i.test(file.name)){ var t=(await pdfText(await readAsArrayBuffer(file))).slice(0,3000).toLowerCase(); if(/summary aging/.test(t)) return 'sa'; if(/aged accounts|aged receiv/.test(t)) return 'ar'; if(/statement/.test(t)) return 'stmt'; if(/remittance|payment advice/.test(t)) return 'remit'; if(/(invoice|document|ref)/.test(t) && /(outstanding|remaining|balance|debit)/.test(t)) return 'stmt'; return null; }
+  if(isImageFile(file.name, file.type)) return 'remit';   // photos / screenshots are remittances
+  if(/\.pdf$/i.test(file.name)){ var t=(await pdfText(await readAsArrayBuffer(file))).slice(0,3000).toLowerCase();
+    /* a scanned page with no text: read it as a picture */ if(t.replace(/\s/g,'').length<30) return 'remit'; if(/summary aging/.test(t)) return 'sa'; if(/aged accounts|aged receiv/.test(t)) return 'ar'; if(/statement/.test(t)) return 'stmt'; if(/remittance|payment advice/.test(t)) return 'remit'; if(/(invoice|document|ref)/.test(t) && /(outstanding|remaining|balance|debit)/.test(t)) return 'stmt'; return null; }
   var rows=await sheetRows(file); var head=rows.slice(0,40).map(function(r){ return r.map(cellStr).join(' '); }).join(' ').toLowerCase();
   if(/customer email list|chase to|all email addresses/.test(head)) return 'emails';
   if(/payment types|mid & end month/.test(head)||/latest payment date/.test(head)) return 'terms';
@@ -3190,6 +3192,7 @@ function matchRemitCustomer(r){
 function buildRemit(text, ctx){
   var r={id:ctx.id||uid(), src:ctx.src||'upload', msgId:ctx.msgId||'', from:ctx.from||'', subject:ctx.subject||'', received:ctx.received||new Date().toISOString(),
     files:ctx.files||[], status:'new', addedAt:new Date().toISOString()};
+  if(ctx.ocr){ r.ocr=ctx.ocr; r.img=true; }
   var clean=String(text||'').replace(/ /g,' ').replace(/[ \t]+/g,' ');
   r.text=clean.slice(0,6000);
   var pd=pickPayDate(clean, new Date(r.received)); r.payDate=ymd(pd.date); r.dateSrc=pd.src; r.dateHow=pd.how;
@@ -3197,7 +3200,7 @@ function buildRemit(text, ctx){
   var m=matchRemitCustomer(r); r.customer=m.name; r.how=m.how; r.conf=m.conf;
   var c=custByName(r.customer); r.invoices=pickInvoices(clean, c);
   if(!r.currency) r.currency=c?c.currency:'GBP';
-  delete r.text; r.snippet=clean.slice(0,400);
+  delete r.text; r.snippet=String(text||'').replace(/[ \t]+/g,' ').slice(0, ctx.ocr?1800:400);
   return r;
 }
 // Text out of an attachment / upload
@@ -3216,14 +3219,18 @@ function htmlToText(h){
   d.innerHTML=String(h||'').replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|tr|li|h\d)>/gi,'\n').replace(/<\/t[dh]>/gi,'  ');
   return (d.textContent||'').replace(/\n{3,}/g,'\n\n');
 }
+function remitImportFiles(){}
 async function importRemitFiles(files){
+  remitImportFiles._told=0;
   var a=remits(), n=0;
   for(var i=0;i<files.length;i++){
     var f=files[i];
     try{
       var u8=new Uint8Array(await readAsArrayBuffer(f));
-      var text=await textFromBytes(u8, f.name, f.type);
-      var r=buildRemit(text,{src:'upload', files:[f.name], subject:f.name, received:new Date(f.lastModified||Date.now()).toISOString()});
+      var src=await remitTextFrom(u8, f.name, f.type, function(msg){ var e=$('rm-prog'); if(e) e.textContent=msg+' ('+(i+1)+' of '+files.length+')'; if(i===0&&!remitImportFiles._told&&/picture|Scanned/.test(msg)){ remitImportFiles._told=1; toast('info','Reading the picture…','This takes a few seconds — PayPilot reads it carefully'); } });
+      if(!String(src.text||'').trim()) throw new Error('No text could be read from it');
+      var r=buildRemit(src.text,{src:src.ocr?'picture':'upload', files:[f.name], subject:f.name, received:new Date(f.lastModified||Date.now()).toISOString(), ocr:src.ocr});
+      if(src.thumb) saveRemitPicture(r.id, src.thumb);
       a.unshift(r); n++;
     }catch(e){ toast('err','Could not read '+f.name, e.message); }
   }
@@ -3303,6 +3310,135 @@ function remitSuggest(r, n){
     var hit=cw.filter(function(w){ return words.indexOf(w)>=0; }).length; if(hit) add(c, 30+hit/cw.length*30, 'name in the email');
   });
   return Object.keys(out).map(function(k){ return out[k]; }).sort(function(a,b){ return b.s-a.s; }).slice(0,n||3);
+}
+
+// ── 72-ocr.js ──
+// ═══════════════════════════════════════════════════════════════════
+// PICTURES OF REMITTANCES — photos, screenshots and scanned PDFs are read with Tesseract (OCR)
+// right here in the browser; nothing is sent anywhere. To read them carefully:
+//   • the picture is turned the right way up (phone photos), enlarged, made grey and the
+//     contrast stretched so faint print stands out
+//   • it is read twice (whole page, then as one block of text) and the more confident reading
+//     wins; a reading that is still unsure is also tried on its side and upside down
+//   • common misreads in numbers are fixed (O→0, l→1, "1.234.56"→1,234.56)
+//   • the picture is kept on this device so you can check the figures against it
+// ═══════════════════════════════════════════════════════════════════
+var OCR_CFG={
+  lib:'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js',
+  worker:'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js',
+  core:'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0',
+  lang:'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int'
+};
+var IMG_EXT=/\.(png|jpe?g|webp|gif|bmp|tiff?|heic|heif)$/i;
+function isImageFile(name, mime){ return /^image\//i.test(mime||'') || IMG_EXT.test(name||''); }
+var _ocrW=null, _ocrProg=null;
+function loadScriptOnce(src){
+  return new Promise(function(res, rej){
+    if(document.querySelector('script[data-src="'+src+'"]')){ var t=setInterval(function(){ if(typeof Tesseract!=='undefined'){ clearInterval(t); res(); } },100); return; }
+    var s=document.createElement('script'); s.src=src; s.async=true; s.dataset.src=src; s.onload=function(){ res(); }; s.onerror=function(){ rej(new Error('Could not load the picture reader — check your internet connection')); }; document.head.appendChild(s);
+  });
+}
+async function ocrWorker(){
+  if(_ocrW) return _ocrW;
+  _ocrW=(async function(){
+    if(typeof Tesseract==='undefined') await loadScriptOnce(OCR_CFG.lib);
+    var w=await Tesseract.createWorker('eng', 1, {workerPath:OCR_CFG.worker, corePath:OCR_CFG.core, langPath:OCR_CFG.lang, gzip:true,
+      logger:function(m){ if(_ocrProg && m && m.status) _ocrProg(m); }});
+    await w.setParameters({preserve_interword_spaces:'1'});
+    return w;
+  })();
+  try{ return await _ocrW; }catch(e){ _ocrW=null; throw e; }
+}
+// picture → clean grey canvas, sensible size
+async function imageToCanvas(blob){
+  var bmp;
+  try{ bmp=await createImageBitmap(blob, {imageOrientation:'from-image'}); }
+  catch(e){
+    if(/heic|heif/i.test(blob.type||'')) throw new Error('iPhone HEIC photos cannot be opened in the browser — take a screenshot of the photo, or set the camera to “Most compatible” (JPEG)');
+    throw new Error('This picture could not be opened');
+  }
+  var w=bmp.width, h=bmp.height, long=Math.max(w,h);
+  var scale = long<1600 ? Math.min(3, 2200/long) : (long>3200 ? 3200/long : 1);
+  var cv=document.createElement('canvas'); cv.width=Math.round(w*scale); cv.height=Math.round(h*scale);
+  var g=cv.getContext('2d',{willReadFrequently:true}); g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+  g.fillStyle='#fff'; g.fillRect(0,0,cv.width,cv.height); g.drawImage(bmp,0,0,cv.width,cv.height);
+  enhanceCanvas(cv);
+  return cv;
+}
+// grey + stretch contrast between the 2nd and 98th percentile (faint print, grey backgrounds, shadows)
+function enhanceCanvas(cv){
+  var g=cv.getContext('2d',{willReadFrequently:true}), im=g.getImageData(0,0,cv.width,cv.height), d=im.data, hist=new Uint32Array(256), n=d.length/4;
+  for(var i=0;i<d.length;i+=4){ var y=(d[i]*299+d[i+1]*587+d[i+2]*114)/1000|0; d[i]=y; hist[y]++; }
+  var lo=0, hi=255, acc=0; for(var a=0;a<256;a++){ acc+=hist[a]; if(acc>n*0.02){ lo=a; break; } } acc=0; for(var b=255;b>=0;b--){ acc+=hist[b]; if(acc>n*0.02){ hi=b; break; } }
+  var span=Math.max(30, hi-lo);
+  for(var j=0;j<d.length;j+=4){ var v=Math.max(0,Math.min(255,(d[j]-lo)*255/span)); d[j]=d[j+1]=d[j+2]=v; }
+  g.putImageData(im,0,0);
+}
+function rotateCanvas(cv, deg){
+  var r=document.createElement('canvas'), q=deg%180!==0; r.width=q?cv.height:cv.width; r.height=q?cv.width:cv.height;
+  var g=r.getContext('2d'); g.translate(r.width/2,r.height/2); g.rotate(deg*Math.PI/180); g.drawImage(cv,-cv.width/2,-cv.height/2); return r;
+}
+async function ocrCanvasOnce(cv, psm){
+  var w=await ocrWorker(); await w.setParameters({tessedit_pageseg_mode:String(psm)});
+  var r=await w.recognize(cv, {rotateAuto:true});
+  return {text:(r.data&&r.data.text)||'', conf:Math.round((r.data&&r.data.confidence)||0)};
+}
+// read carefully: two layouts, then other orientations if still unsure; the most confident wins
+async function ocrCanvas(cv){
+  var best=await ocrCanvasOnce(cv, 3);
+  if(best.conf<85){ var b2=await ocrCanvasOnce(cv, 6); if(b2.conf>best.conf) best=b2; }
+  if(best.conf<60 || best.text.replace(/\s/g,'').length<25){
+    for(var deg of [90,270,180]){ var r=await ocrCanvasOnce(rotateCanvas(cv,deg), 3); if(r.conf>best.conf+5){ best=r; best.rot=deg; } if(best.conf>=80) break; }
+  }
+  best.text=ocrClean(best.text);
+  return best;
+}
+// fix the misreads that matter for money and dates
+function ocrClean(t){
+  return String(t||'').split('\n').map(function(line){
+    return line
+      .replace(/(\d)[Oo](?=[\d,.\/])/g,'$10').replace(/([£$€,.\/]\d*)[Oo](?=[\d,.\s]|$)/g,'$10').replace(/(\d)[Oo]\b/g,'$10')
+      .replace(/(\d)[lI|](?=\d)/g,'$11').replace(/([£$€])\s*[lI|](?=[\d,])/g,'$11')
+      .replace(/(\d)\s+([.,])\s*(\d{2})\b/g,'$1$2$3')                  // "1,234 .56" → "1,234.56"
+      .replace(/\b(\d{1,3})\.(\d{3})\.(\d{2})\b/g,'$1,$2.$3')           // "1.234.56" → "1,234.56"
+      .replace(/£\s+(?=\d)/g,'£').replace(/[“”]/g,'"').replace(/[‘’]/g,"'");
+  }).join('\n');
+}
+// small copy of the picture kept on this device (not synced) so the figures can be checked
+function canvasThumb(cv, max){ var s=Math.min(1, (max||1400)/Math.max(cv.width,cv.height)); var t=document.createElement('canvas'); t.width=Math.round(cv.width*s); t.height=Math.round(cv.height*s); t.getContext('2d').drawImage(cv,0,0,t.width,t.height); return t.toDataURL('image/jpeg',0.72); }
+
+// Any remittance file → text (+ how it was read). Pictures and scanned PDFs go through OCR.
+async function remitTextFrom(u8, name, mime, onStep){
+  if(isImageFile(name, mime)){
+    if(onStep) onStep('Reading the picture '+name+'…');
+    var cv=await imageToCanvas(new Blob([u8],{type:mime||'image/'+((name.match(/\.(\w+)$/)||[])[1]||'png')}));
+    var r=await ocrCanvas(cv);
+    return {text:r.text, ocr:{conf:r.conf, rot:r.rot||0}, thumb:canvasThumb(r.rot?rotateCanvas(cv,r.rot):cv)};
+  }
+  var text=await textFromBytes(u8, name, mime);
+  if((/pdf/i.test(mime)||/\.pdf$/i.test(name)) && String(text||'').replace(/\s/g,'').length<30){
+    // a scanned PDF: no text inside, so read the page images
+    if(onStep) onStep('Scanned PDF — reading the pages of '+name+'…');
+    var pdf=await pdfjsLib.getDocument({data:pdfBytes(u8)}).promise, out=[], conf=[], thumb=null;
+    for(var pn=1;pn<=Math.min(pdf.numPages,3);pn++){
+      var page=await pdf.getPage(pn), vp=page.getViewport({scale:2.6}), cvp=document.createElement('canvas'); cvp.width=vp.width; cvp.height=vp.height;
+      var g=cvp.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,cvp.width,cvp.height); await page.render({canvasContext:g, viewport:vp}).promise;
+      enhanceCanvas(cvp); var rr=await ocrCanvas(cvp); out.push(rr.text); conf.push(rr.conf); if(!thumb) thumb=canvasThumb(rr.rot?rotateCanvas(cvp,rr.rot):cvp);
+    }
+    return {text:out.join('\n'), ocr:{conf:Math.round(conf.reduce(function(a,b){ return a+b; },0)/Math.max(1,conf.length)), scanned:true}, thumb:thumb};
+  }
+  return {text:text, ocr:null, thumb:null};
+}
+function saveRemitPicture(id, dataUrl){ if(id && dataUrl) idbSet('remitimg_'+id, dataUrl); }
+function remitPicture(id){ return idbGet('remitimg_'+id); }
+function showRemitPicture(id){
+  var r=remits().find(function(x){ return x.id===id; });
+  remitPicture(id).then(function(src){
+    openModal('Remittance picture'+(r&&r.customer?' — '+r.customer:''),
+      '<div class="cmp" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)"><div style="overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:12px;background:#fff">'+(src?'<img src="'+esc(src)+'" alt="Remittance picture" style="width:100%;display:block">':'<div class="empty"><b>The picture is on the device that read it</b>Pictures stay on the computer or phone they were added on.</div>')+'</div>'+
+      '<div><div class="h4" style="margin-top:0">What PayPilot read'+(r&&r.ocr?' · '+r.ocr.conf+'% sure':'')+'</div><div class="small" style="white-space:pre-wrap;max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px">'+esc((r&&r.snippet)||'')+'</div></div></div>',
+      {xwide:true, foot:'<button class="btn" onclick="closeModal()">Close</button>'+(r?'<button class="btn btn-p" onclick="closeModal();remitEdit('+jsArg(id)+')">Check / edit figures</button>':'')});
+  });
 }
 
 // ── 75-gmail.js ──
@@ -3430,17 +3566,23 @@ async function readRemitMessage(id){
   var body=plain||htmlToText(html);
   var ctx={src:'gmail', msgId:id, from:headerOf(msg,'From'), subject:headerOf(msg,'Subject'), received:new Date(+msg.internalDate||Date.now()).toISOString()};
   var atts=parts.filter(function(p){ return p.filename && p.body && (p.body.attachmentId||p.body.data) && /\.(pdf|xlsx|xls|csv|txt|html?)$/i.test(p.filename); });
+  // pictures (photos, screenshots pasted into the email) — skip logos and signature icons by size
+  var pics=parts.filter(function(p){ return p.body && (p.body.attachmentId||p.body.data) && isImageFile(p.filename, p.mimeType) && (p.body.size||0)>=25000; }).slice(0,3);
   var out=[];
-  for(var i=0;i<atts.length;i++){
-    var p=atts[i];
+  var readOne=async function(p, i){
     try{
       var data=p.body.data||(await Gmail.api('users/me/messages/'+id+'/attachments/'+p.body.attachmentId)).data;
-      var text=await textFromBytes(b64urlToU8(data), p.filename, p.mimeType);
-      if(text && text.replace(/\s/g,'').length>20){
-        out.push(buildRemit(text+'\n'+body.slice(0,1500), Object.assign({}, ctx, {id:id+'_'+i, files:[p.filename]})));
+      var src=await remitTextFrom(b64urlToU8(data), p.filename||('picture'+i+'.png'), p.mimeType);
+      if(src.text && src.text.replace(/\s/g,'').length>20){
+        var r=buildRemit(src.text+'\n'+body.slice(0,1500), Object.assign({}, ctx, {id:id+'_'+i, files:[p.filename||'picture'], ocr:src.ocr}));
+        if(src.thumb) saveRemitPicture(r.id, src.thumb);
+        out.push(r);
       }
     }catch(e){ console.warn('attachment', p.filename, e); }
-  }
+  };
+  for(var i=0;i<atts.length;i++) await readOne(atts[i], i);
+  // only read the pictures when the email has no readable remittance file
+  if(!out.length && pics.length && !/\d[\d,]*\.\d{2}/.test(body)) for(var k=0;k<pics.length;k++) await readOne(pics[k], 'p'+k);
   if(!out.length) out.push(buildRemit(body+'\n'+ctx.subject, Object.assign({}, ctx, {id:id})));
   // one remittance per message unless the attachments clearly belong to different customers
   if(out.length>1){ var names={}; out.forEach(function(r){ names[r.customer||'?']=1; }); if(Object.keys(names).length===1){ var tot=sum(out,function(r){return r.amount;}); var f=out[0]; f.amount=round2(tot); f.files=out.map(function(r){ return r.files[0]; }); f.invoices=[].concat.apply([],out.map(function(r){ return r.invoices; })); out=[f]; } }
@@ -4336,7 +4478,7 @@ function renderRemits(){
   var thisWeek=all.filter(function(r){ var d=fromYMD(r.payDate); return r.status!=='ignored' && d>=ws && d<=addDays(ws,6); });
   var scan=devGet('pp_remit_scan','');
   var cnt={new:nw.length, confirmed:all.filter(function(r){ return r.status==='confirmed'; }).length, unmatched:unmatched.length, ignored:all.filter(function(r){ return r.status==='ignored'; }).length, all:all.length};
-  var h='<div class="row" style="margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-p edit-only" onclick="remitScanClick()">Scan “'+esc(settings().remitLabel)+'” folder in Gmail</button><button class="btn edit-only" onclick="remitUpload()">Upload remittance files</button><button class="btn edit-only" onclick="remitAddForm()">+ Add by hand</button><span class="muted small" id="rm-prog">'+(scan?'Last scan '+fmtTime(scan):'Not scanned yet on this device')+' · looks back '+settings().remitDays+' days</span></div>';
+  var h='<div class="row" style="margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-p edit-only" onclick="remitScanClick()">Scan “'+esc(settings().remitLabel)+'” folder in Gmail</button><button class="btn edit-only" onclick="remitUpload()">Upload remittance files</button><button class="btn edit-only" onclick="remitUpload(true)" title="Photos, screenshots or scanned remittances">📷 Add pictures</button><button class="btn edit-only" onclick="remitAddForm()">+ Add by hand</button><span class="muted small" id="rm-prog">'+(scan?'Last scan '+fmtTime(scan):'Not scanned yet on this device')+' · looks back '+settings().remitDays+' days</span></div>';
   h+='<div class="kpis" style="margin-bottom:16px">'+kpi('To confirm', nw.length, money0(sum(nw,function(r){ return fxToGBP(r.amount,r.currency); }))+' (in £)', nw.length?'k-warn':'k-ok', "RMF.status='new';renderRemits()")+
     kpi('Paying this week', money0(sum(thisWeek,function(r){ return fxToGBP(r.amount,r.currency); })), thisWeek.length+' remittance'+(thisWeek.length===1?'':'s'),'k-ok', "RMF.status='all';renderRemits()")+
     kpi('Confirmed this week', money0(sum(conf,function(r){ return fxToGBP(r.amount,r.currency); })), conf.length+' logged as payments','k-brand', "RMF.status='confirmed';renderRemits()")+
@@ -4356,7 +4498,7 @@ function renderRemits(){
 }
 function remitList(){
   var list=remits().filter(remitMatchesFilter);
-  if(!list.length){ setHTML('rm-list','<div class="empty"><b>'+(RMF.q?'No remittance matches “'+esc(RMF.q)+'”':RMF.status==='new'?'Nothing to confirm':'Nothing here')+'</b>'+(RMF.status==='new'&&!RMF.q?'Scan your Gmail Remits folder, upload remittance files or add one by hand.':'')+'</div>'); return; }
+  if(!list.length){ setHTML('rm-list','<div class="empty"><b>'+(RMF.q?'No remittance matches “'+esc(RMF.q)+'”':RMF.status==='new'?'Nothing to confirm':'Nothing here')+'</b>'+(RMF.status==='new'&&!RMF.q?'Scan your Gmail Remits folder, upload remittance files or pictures, or add one by hand.':'')+'</div>'); return; }
   setHTML('rm-list','<div class="rm-list">'+list.slice(0,300).map(remitCard).join('')+'</div>'+(list.length>300?'<div class="muted small" style="margin-top:8px">Showing 300 of '+list.length+' — use the search box.</div>':''));
 }
 function remitCard(r){
@@ -4372,13 +4514,16 @@ function remitCard(r){
   var h='<div class="rm st-'+st+'" data-id="'+esc(r.id)+'">'+
     '<div class="who">'+(c?cname(c):'<b class="amt-bad">'+(r.customer?esc(r.customer)+' (not on ledger)':'Customer not recognised')+'</b>')+
       '<div class="xs muted" title="'+esc(r.subject||'')+'">'+esc(((r.from||'').replace(/<.*>/,'').trim()||r.src||'').slice(0,40))+' · received '+fmtTime(r.received)+link+'</div>'+
-      '<div class="xs" style="margin-top:3px">'+stPill+(r.customer?' <span class="pill pill-'+confCls+'" title="How PayPilot matched the customer">'+esc(r.how||'')+'</span>':'')+'</div></div>'+
+      '<div class="xs" style="margin-top:3px">'+stPill+(r.customer?' <span class="pill pill-'+confCls+'" title="How PayPilot matched the customer">'+esc(r.how||'')+'</span>':'')+
+      (r.ocr?' <span class="pill pill-'+(r.ocr.conf>=80?'info':'warn')+'" title="Read from a picture — compare the figures with the picture">📷 read from picture · '+r.ocr.conf+'% sure</span>':'')+'</div>'+
+      (r.ocr&&r.ocr.conf<80&&r.status!=='confirmed'?'<div class="xs amt-warn" style="margin-top:3px">The picture was hard to read — check the amount and date against it before confirming.</div>':'')+'</div>'+
     '<div><div class="xs muted">Pays on</div><b>'+(r.payDate?fmtDw(fromYMD(r.payDate)):'—')+'</b><div class="xs muted" title="'+esc(r.dateSrc||'')+'" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">'+esc(r.dateSrc||'')+'</div></div>'+
     '<div><div class="amt">'+money(r.amount,cur)+'</div>'+note+(inv.length?'<div class="xs mono muted" title="'+esc(inv.join(', '))+'">'+esc(inv.slice(0,5).join(', '))+(inv.length>5?' +'+(inv.length-5):'')+'</div>':'')+(r.files&&r.files.length?'<div class="xs muted">📎 '+esc(r.files.join(', ').slice(0,50))+'</div>':'')+'</div>'+
     '<div class="acts edit-only">'+
       (st==='new'?'<button class="btn btn-xs btn-p" onclick="confirmRemit('+jsArg(r.id)+')">Confirm</button>':'')+
       (st==='unmatched'?'<button class="btn btn-xs btn-p" onclick="remitEdit('+jsArg(r.id)+')">Choose customer</button>':'')+
       (st==='confirmed'||st==='ignored'?'<button class="btn btn-xs" onclick="remitUnconfirm('+jsArg(r.id)+')">Back to confirm</button>':'')+
+      (r.ocr?'<button class="btn btn-xs" onclick="showRemitPicture('+jsArg(r.id)+')">📷 Picture</button>':'')+
       '<button class="btn btn-xs" onclick="remitEdit('+jsArg(r.id)+')">Edit</button>'+
       (st!=='ignored'&&st!=='confirmed'?'<button class="btn btn-xs btn-ghost" onclick="remitIgnore('+jsArg(r.id)+')">Ignore</button>':'')+
       '<button class="btn btn-xs btn-ghost" title="Delete this remittance" onclick="remitDelete('+jsArg(r.id)+')">Delete</button>'+
@@ -4415,9 +4560,11 @@ function remitEdit(id){
     '<label class="fld"><span>Amount</span><input id="re-amt" type="number" step="0.01" value="'+(r.amount||'')+'"></label>'+
     '<label class="fld"><span>Currency</span><select id="re-cur">'+['GBP','EUR','USD'].map(function(x){ return '<option'+((r.currency||'GBP')===x?' selected':'')+'>'+x+'</option>'; }).join('')+'</select></label>'+
     '<label class="fld" style="grid-column:1/-1"><span>Invoices paid (optional)</span><input id="re-inv" value="'+esc((r.invoices||[]).join(', '))+'" placeholder="17200101, 17200188"></label></div>'+
-    (r.dateSrc?'<div class="muted xs">Date read from: '+esc(r.dateSrc)+'</div>':'')+custDatalist(),
+    (r.dateSrc?'<div class="muted xs">Date read from: '+esc(r.dateSrc)+'</div>':'')+
+    (r.ocr?'<div class="h4">The picture — check the figures against it ('+r.ocr.conf+'% sure)</div><div id="re-pic" style="max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff"><div class="muted small" style="padding:10px">Loading…</div></div>':'')+custDatalist(),
     {foot:'<button class="btn" onclick="closeModal()">Cancel</button>'+(r.status!=='confirmed'?'<button class="btn" id="re-save">Save</button><button class="btn btn-p" id="re-conf">Save &amp; confirm</button>':'<button class="btn btn-p" id="re-save">Save</button>')});
   qsa('#modal-body button[data-n]').forEach(function(b){ b.onclick=function(){ $('re-cust').value=b.dataset.n; }; });
+  if(r.ocr) remitPicture(id).then(function(src){ var e=$('re-pic'); if(e) e.innerHTML=src?'<img src="'+esc(src)+'" alt="Remittance picture" style="width:100%;display:block">':'<div class="muted small" style="padding:10px">The picture is kept on the device that read it.</div>'; });
   var save=function(confirmIt){
     var name=$('re-cust').value.trim(), c=custByName(name);
     if(name && !c){ toast('warn','Pick a customer from the list','“'+name+'” is not on the ledger'); return; }
@@ -4453,8 +4600,8 @@ function confirmAllMatched(){
   rebuild(); renderAll();
   toast('ok', list.length+' remittance'+(list.length===1?'':'s')+' confirmed','Check the rest one by one', function(){ snaps.forEach(function(s){ if(s) restoreRemit(s); }); rebuild(); renderAll(); toast('info','Undone',''); });
 }
-function remitUpload(){
-  var i=document.createElement('input'); i.type='file'; i.multiple=true; i.accept='.pdf,.xlsx,.xls,.csv,.txt,.html,.htm';
+function remitUpload(pics){
+  var i=document.createElement('input'); i.type='file'; i.multiple=true; i.accept=pics?'image/*,.pdf':'.pdf,.xlsx,.xls,.csv,.txt,.html,.htm,image/*';
   i.onchange=function(){ importRemitFiles(Array.prototype.slice.call(i.files)).then(function(n){ toast('ok', n+' remittance'+(n===1?'':'s')+' read','Check the customer, date and amount, then confirm'); RMF.status='new'; rebuild(); renderAll(); }); };
   i.click();
 }
