@@ -664,7 +664,7 @@ var DEFAULT_PROFILES = [];
 // Core utilities: dates, money, escaping, DOM helpers, toasts, modals
 // ═══════════════════════════════════════════════════════════════════
 var APP_NAME = 'PayPilot';
-var APP_BUILD = 'v2026-10-29.4';
+var APP_BUILD = 'v2026-10-29.5';
 // Cloud sync worker (URL is not secret). The sync KEY is never stored in this file —
 // it is entered once per device in Settings and kept in that browser only.
 var CLOUD_DEFAULT_URL = 'https://paypilot.8pavii.workers.dev';
@@ -969,7 +969,7 @@ var DEFAULT_SETTINGS = {
   midDay: 15, weekendRule: 'prev', chaseDays: 3, followUpDays: 2, tiny: 50,
   riskHigh: 4000, riskMed: 500, forecastWeeks: 8, includePartners: false,
   fx: {EUR: 0.87, USD: 0.75}, managerEmail: '', managerName: '', bcc: true, signature: 'Pavi',
-  template: null, remitLabel: 'Remits', remitDays: 45, gmailMode: 'popup', hols: null, monthlySales: 0
+  template: null, remitTemplate: null, remitLabel: 'Remits', remitDays: 45, gmailMode: 'popup', hols: null, monthlySales: 0
 };
 var _setMemo=null;
 function settings(){
@@ -1076,16 +1076,18 @@ var DEFAULT_HOLS = [ // England & Wales
   '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25','2026-08-31','2026-12-25','2026-12-28',
   '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28',
   '2028-01-03','2028-04-14','2028-04-17','2028-05-01','2028-05-29','2028-08-28','2028-12-25','2028-12-26'];
-var _holSet=null;
+var _holSet=null, _holGen=-1;
 function holidays(){
-  if(_holSet) return _holSet;
+  var g=typeof FC_GEN!=='undefined'?FC_GEN:0;
+  if(_holSet && _holGen===g) return _holSet;
+  _holGen=g;
   var list=DEFAULT_HOLS.slice();
   try{ var g=JSON.parse(devGet('pp_govuk_hols','null')); if(g&&Array.isArray(g.dates)) list=list.concat(g.dates); }catch(e){}
   var s=settings().hols; if(Array.isArray(s)) list=list.concat(s);
   _holSet={}; list.forEach(function(d){ _holSet[d]=1; });
   return _holSet;
 }
-function resetHolidays(){ _holSet=null; }
+function resetHolidays(){ _holSet=null; if(typeof FC_GEN!=='undefined') FC_GEN++; }
 // Pull the official list from GOV.UK once a month (falls back silently to the built-in list)
 function refreshGovHolidays(){
   try{
@@ -2907,10 +2909,16 @@ function emailTableText(c, run, data){
   return data.rows.map(function(r){ return (r.doc+'  '+(r.ext||'')+'  '+(r.due?fmtD(r.due):'')+'  '+({overdue:'OVERDUE',becoming:'Becoming due',later:'Not yet due',credit:'Credit'}[r.st]||'')+(r.q?' (in query)':'')+'  '+money(r.amt,c.currency)).replace(/\s{3,}/g,'  '); }).join('\n');
 }
 function fillTemplate(str, vars){ return str.replace(/\{(\w+)\}/g, function(m,k){ return vars[k]!=null?vars[k]:m; }); }
-function renderEmail(c, run, amount, inclBecoming, scope){
-  var tpl=template(), data=emailRows(c, run, inclBecoming, scope);
+function renderEmail(c, run, amount, inclBecoming, scope, remit){
+  var tpl=template(), data, extra={};
+  if(remit){
+    // chasing the invoices a remittance did not include
+    var miss=remitMissing(remit, run, inclBecoming);
+    tpl=remitTemplate(); data=miss.data;
+    extra={remitAmount:money(remit.amount, remit.currency||c.currency), remitDate:remit.payDate?fmtD(fromYMD(remit.payDate)):'', missingWhat:inclBecoming?'overdue or due by '+fmtD(run.date):'overdue'};
+  } else data=emailRows(c, run, inclBecoming, scope);
   var runName = run.type==='WEEKLY'?'weekly':run.type;
-  var vars={amount:money(amount,c.currency), run:runName, runDate:fmtD(run.date), signature:settings().signature||'Pavi', customer:c.name};
+  var vars=Object.assign({amount:money(amount,c.currency), run:runName, runDate:fmtD(run.date), signature:settings().signature||'Pavi', customer:c.name}, extra);
   var pS='font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1e293b;line-height:1.6;margin:0 0 12px 0';
   var parts=fillTemplate(tpl.body, Object.assign({},vars,{table:'\u0000TABLE\u0000'})).split('\u0000TABLE\u0000');
   var para=function(txt){ return txt.split(/\n{2,}/).map(function(p){ p=p.trim(); if(!p) return ''; return '<p style="'+pS+'">'+esc(p).replace(/\n/g,'<br>')+'</p>'; }).join(''); };
@@ -2926,7 +2934,8 @@ function openComposer(name, opts){
   opts=opts||{};
   var run=opts.run?getRunById(opts.run):nextRunFor(c, today());
   if(run && run.type!=='WEEKLY' && c.run!=='WEEKLY' && c.run!=='ADV' && runTypesFor(c.run).indexOf(run.type)<0){ var nr=nextRunFor(c,today()); if(nr) run=nr; }
-  EM={c:c, run:run, attMode:'original', inclBecoming:true, scope:devGet('pp_em_scope','run'), amount:overdueToQuote(c), amountEdited:false, to:contactFor(c), cc:'', bcc:settings().bcc, att:null};
+  EM={c:c, run:run, attMode:'original', inclBecoming:true, scope:devGet('pp_em_scope','run'), amount:overdueToQuote(c), amountEdited:false, to:contactFor(c), cc:'', bcc:settings().bcc, att:null, remit:null};
+  if(opts.remit){ var rm=remits().find(function(x){ return x.id===opts.remit; }); if(rm){ EM.remit=rm; EM.amount=remitMissing(rm, run, true).total; } }
   statementFileFor(c.name).then(function(f){ if(f&&f.b64){ EM.att={b64:f.b64, name:f.fname||'Statement.pdf', mime:f.mime||(/\.xlsx?$/i.test(f.fname||'')?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf'), at:f.at}; } drawComposer(); }, function(){ drawComposer(); });
 }
 function composerRunOptions(c){
@@ -2937,7 +2946,7 @@ function composerRunOptions(c){
 }
 function drawComposer(){
   if(!EM) return; var c=EM.c, run=EM.run;
-  var mail=renderEmail(c, run, EM.amount, EM.inclBecoming, EM.scope);
+  var mail=renderEmail(c, run, EM.amount, EM.inclBecoming, EM.scope, EM.remit);
   var warn=[];
   if(c.partner) warn.push('<b>Partner company</b> — chase emails to intercompany accounts are usually wrong.');
   if(isSnoozed(c.name)) warn.push('Snoozed until '+fmtD(snoozes()[c.name])+'.');
@@ -2959,7 +2968,11 @@ function drawComposer(){
   if(!EM.to) warn.unshift('No email address on file for '+esc(c.name)+'. Type one in “To” — it is remembered for next time.');
   var runOpts=composerRunOptions(c).map(function(r){ return '<option value="'+r.id+'"'+(run&&r.id===run.id?' selected':'')+'>'+(r.type==='WEEKLY'?'Weekly':r.type)+' · '+fmtDw(r.date)+'</option>'; }).join('');
   var lc=lastChase(c.name);
-  var left='<div class="cmp-side">'+
+  var rmBox='';
+  if(EM.remit){ var mm=remitMissing(EM.remit, run, EM.inclBecoming);
+    rmBox='<div class="infobox small" style="margin:0 0 10px"><b>Chasing invoices not on the remittance</b> of '+money(EM.remit.amount,EM.remit.currency||c.currency)+(EM.remit.payDate?' paying '+fmtD(fromYMD(EM.remit.payDate)):'')+' · '+(mm.data.rows.length?mm.data.rows.length+' item'+(mm.data.rows.length===1?'':'s')+' · '+money(mm.total,c.currency):'nothing missing')+(mm.note?'<div class="xs muted" style="margin-top:3px">'+esc(mm.note)+'</div>':'')+'<div style="margin-top:6px"><button class="btn btn-xs" onclick="EM.remit=null;EM.amount=overdueToQuote(EM.c);drawComposer()">Switch to the normal chase email</button></div></div>';
+  }
+  var left='<div class="cmp-side">'+rmBox+
     '<div class="cmp-cust"><div class="cmp-name">'+esc(c.name)+'</div><div class="muted small">'+esc(c.code)+' · '+esc(RUN_LABEL[c.run]||c.run)+' · '+esc(c.terms||c.profile.terms||'')+(lc?' · last chased '+relDays(new Date(lc.date)):' · never chased')+'</div></div>'+
     '<label class="fld"><span>To</span><input id="em-to" value="'+esc(EM.to)+'" placeholder="customer@company.com; second@company.com"></label>'+
     '<div class="xs muted" style="margin:-4px 0 6px">'+(EM.to?(EM.toEdited?'Changed by you for ':'Addresses for ')+'<b>'+esc(c.name)+'</b>'+(EM.toEdited?'':' — from '+esc(srcInfo.label)):'')+'</div>'+
@@ -2967,9 +2980,9 @@ function drawComposer(){
     '<label class="fld"><span>Cc</span><input id="em-cc" value="'+esc(EM.cc)+'"></label>'+
     '<label class="chk"><input type="checkbox" id="em-bcc" '+(EM.bcc?'checked':'')+' onchange="EM.bcc=this.checked"> Bcc '+esc(FINANCE_BCC)+'</label>'+
     '<div class="grid2"><label class="fld"><span>Payment run</span><select id="em-run" onchange="EM.run=getRunById(this.value);drawComposer()">'+runOpts+'</select></label>'+
-    '<label class="fld"><span>Overdue to quote ('+esc(c.currency)+')</span><input id="em-amt" type="number" step="0.01" value="'+round2(EM.amount)+'" onchange="EM.amount=num(this.value);EM.amountEdited=true;drawComposer()"></label></div>'+
-    (hasStatement(c)?'<div class="att-toggle"><span class="small b muted" style="align-self:center">Table shows</span><div class="seg"><button class="'+(EM.scope!=='all'?'on':'')+'" onclick="emScope(\'run\')">Overdue + due by run</button><button class="'+(EM.scope==='all'?'on':'')+'" onclick="emScope(\'all\')">Every open item ('+c.stmt.items.length+')</button></div></div>':'')+
-    (EM.scope==='all'&&hasStatement(c)?'':'<label class="chk"><input type="checkbox" '+(EM.inclBecoming?'checked':'')+' onchange="EM.inclBecoming=this.checked;drawComposer()"> Include invoices becoming due by '+fmtD(run.date)+'</label>')+
+    '<label class="fld"><span>'+(EM.remit?'Not on the remittance':'Overdue to quote')+' ('+esc(c.currency)+')</span><input id="em-amt" type="number" step="0.01" value="'+round2(EM.amount)+'" onchange="EM.amount=num(this.value);EM.amountEdited=true;drawComposer()"></label></div>'+
+    (hasStatement(c)&&!EM.remit?'<div class="att-toggle"><span class="small b muted" style="align-self:center">Table shows</span><div class="seg"><button class="'+(EM.scope!=='all'?'on':'')+'" onclick="emScope(\'run\')">Overdue + due by run</button><button class="'+(EM.scope==='all'?'on':'')+'" onclick="emScope(\'all\')">Every open item ('+c.stmt.items.length+')</button></div></div>':'')+
+    (EM.scope==='all'&&hasStatement(c)&&!EM.remit?'':'<label class="chk"><input type="checkbox" '+(EM.inclBecoming?'checked':'')+' onchange="EM.inclBecoming=this.checked;if(EM.remit&&!EM.amountEdited)EM.amount=remitMissing(EM.remit,EM.run,EM.inclBecoming).total;drawComposer()"> Include invoices becoming due by '+fmtD(run.date)+'</label>')+
     (hasStatement(c)?'<div class="okbox small" style="margin:6px 0"><b>Statement read</b> · '+esc(stmtSummary(c.stmt.report)||c.stmt.items.length+' lines')+' · <a href="#" onclick="stmtLines('+jsArg(c.name)+');return false">see every line</a></div>':'')+
     '<div class="drop" id="em-drop" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="event.preventDefault();this.classList.remove(\'over\');emStatement(event.dataTransfer.files[0])" onclick="$(\'em-file\').click()">'+
       (EM.att?'<b>'+(/pdf/i.test(EM.att.mime||EM.att.name)?'<span class="ftag pdf">PDF</span>':'<span class="ftag xls">XLS</span>')+' '+esc(EM.att.name)+'</b><div class="muted small">'+(EM.att.at?'saved '+fmtTime(new Date(EM.att.at).toISOString()):'')+' · click or drop to replace</div>':'<b>📎 Drop the customer statement here</b><div class="ftypes"><span class="ftag pdf">PDF</span><span class="ftag xls">Excel</span></div><div class="muted small" style="margin-top:6px">From Business Central — it is attached and fills the table</div>')+
@@ -2988,7 +3001,7 @@ function drawComposer(){
 }
 // a yes/no on top of the composer that does not close it
 function confirmBoxKeep(title, msg, onYes){
-  var ov=document.createElement('div'); ov.className='modal-wrap open'; ov.style.zIndex='95';
+  var ov=document.createElement('div'); ov.className='modal-wrap open modal-top'; ov.style.zIndex='95';
   ov.innerHTML='<div class="modal" style="max-width:460px"><div class="modal-h"><h3>'+esc(title)+'</h3></div><div class="modal-b"><p class="muted" style="margin:0">'+esc(msg)+'</p></div><div class="modal-f"><button class="btn" data-a="no">Go back</button><button class="btn btn-p" data-a="yes">Yes, it is right</button></div></div>';
   document.body.appendChild(ov);
   ov.querySelector('[data-a=no]').onclick=function(){ ov.remove(); };
@@ -3022,15 +3035,16 @@ function emChecks(){
   return true;
 }
 function emAfterSend(via){
-  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming, EM.scope);
-  logChase(c.name,{via:via, subject:mail.subject, amount:EM.amount, run:EM.run.id, to:EM.to});
+  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming, EM.scope, EM.remit);
+  logChase(c.name,{via:via, subject:mail.subject, amount:EM.amount, run:EM.run.id, to:EM.to, remit:EM.remit?EM.remit.id:''});
+  if(EM.remit){ var ra=remits(), rr=ra.find(function(x){ return x.id===EM.remit.id; }); if(rr){ rr.missingChasedAt=new Date().toISOString(); saveRemits(ra); } }
   var cr=currentRun(); if(cr) setTick(cr.id, c.name, true, via==='gmail'?'Gmail draft':'sent');
   if(EM.run && (!cr||EM.run.id!==cr.id)) setTick(EM.run.id, c.name, true, via);
   var led=DB.get('nwi_sent_ledger',[]); if(!Array.isArray(led)) led=[]; led.unshift({customer:c.name, date:new Date().toISOString(), subject:mail.subject, amount:EM.amount, to:EM.to, run:EM.run.id, via:via}); if(led.length>1500) led.length=1500; DB.set('nwi_sent_ledger',led);
 }
 function emDraft(){
   if(!emChecks()) return;
-  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming, EM.scope);
+  var c=EM.c, mail=renderEmail(c, EM.run, EM.amount, EM.inclBecoming, EM.scope, EM.remit);
   var go=function(){
     return createDraft({to:EM.to, cc:EM.cc, bcc:EM.bcc?FINANCE_BCC:'', subject:mail.subject, html:mail.html, text:mail.text, att:emAttachment()}).then(function(){
       emAfterSend('gmail'); closeModal(); toast('ok','Draft created in Gmail', c.name+' — review and send from Drafts'); renderAll();
@@ -3040,7 +3054,7 @@ function emDraft(){
 }
 function emMarkSent(){ if(!emChecks()) return; emAfterSend('manual'); closeModal(); toast('ok','Chase logged', EM.c.name); renderAll(); }
 function emCopy(){
-  var mail=renderEmail(EM.c, EM.run, EM.amount, EM.inclBecoming, EM.scope);
+  var mail=renderEmail(EM.c, EM.run, EM.amount, EM.inclBecoming, EM.scope, EM.remit);
   try{
     var item=new ClipboardItem({'text/html':new Blob([mail.html],{type:'text/html'}), 'text/plain':new Blob([mail.text],{type:'text/plain'})});
     navigator.clipboard.write([item]).then(function(){ toast('ok','Email copied','Paste into Outlook or Gmail — formatting and table included'); }, fallback);
@@ -3439,6 +3453,88 @@ function showRemitPicture(id){
       '<div><div class="h4" style="margin-top:0">What PayPilot read'+(r&&r.ocr?' · '+r.ocr.conf+'% sure':'')+'</div><div class="small" style="white-space:pre-wrap;max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px">'+esc((r&&r.snippet)||'')+'</div></div></div>',
       {xwide:true, foot:'<button class="btn" onclick="closeModal()">Close</button>'+(r?'<button class="btn btn-p" onclick="closeModal();remitEdit('+jsArg(id)+')">Check / edit figures</button>':'')});
   });
+}
+
+// ── 74-remit-chase.js ──
+// ═══════════════════════════════════════════════════════════════════
+// REMITTANCE → CHASE WHAT IS MISSING
+// When a customer remits, compare the remittance with what they owe (statement lines, or the
+// ledger when there is no statement) and draft an email for the invoices it did not include.
+// ═══════════════════════════════════════════════════════════════════
+var DEFAULT_REMIT_TEMPLATE = {
+  subject: 'Remittance received – invoices not included',
+  body: 'Hi Team,\n\nThank you for your remittance of {remitAmount} paying on {remitDate}.\n\nThe invoices below are {missingWhat} but are not included in this remittance, totalling {amount}. Please can you confirm when these will be paid, or let me know if there is a query on any of them so that I can resolve it.\n\nI have attached the latest statement below.\n\n{table}\n\nThanks & Regards\n{signature}'
+};
+function remitTemplate(){ var t=settings().remitTemplate; return (t&&t.body)?t:DEFAULT_REMIT_TEMPLATE; }
+function invKey(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+// what the remittance did not pay: {data:{kind,rows,credits}, total, paid[], note, unknown[]}
+function remitMissing(r, run, inclBecoming){
+  var c=custByName(r&&r.customer); var empty={data:{kind:'invoices', rows:[], credits:0}, total:0, paid:[], note:'', unknown:[], c:c};
+  if(!r || !c) return empty;
+  run=run||nextRunFor(c, today()); var rd=run?run.date:addDays(today(),7), t=today(), qs=queryInvoiceSet(c);
+  var listed=(r.invoices||[]).map(invKey).filter(function(k){ return k.length>=4; });
+  var isListed=function(it){ var d=invKey(it.doc), e=invKey(it.ext); return listed.some(function(k){ return (d && (k===d || (d.length>=6 && k.indexOf(d)>=0))) || (e && e.length>=4 && k===e); }); };
+  if(hasStatement(c)){
+    var open=c.stmt.items.filter(function(it){ return it.amt>0; }).map(function(it){ var d=stmtDue(it,c); return {it:it, d:d, st:!d||d<t?'overdue':(d<=rd?'becoming':'later')}; })
+      .filter(function(x){ return x.st==='overdue' || (inclBecoming && x.st==='becoming'); })
+      .sort(function(a,b){ return (a.d||0)-(b.d||0); });
+    var paid=[], miss=[], note='';
+    if(listed.length){
+      open.forEach(function(x){ (isListed(x.it)?paid:miss).push(x); });
+      // invoice numbers on the remittance that are not on the statement (already paid, or a different customer)
+      var docs=c.stmt.items.map(function(it){ return invKey(it.doc); });
+      empty.unknown=(r.invoices||[]).filter(function(i){ var k=invKey(i); return k.length>=6 && docs.every(function(d){ return d!==k && k.indexOf(d)<0; }); });
+    } else {
+      // no invoice numbers on the remittance: assume it pays the oldest first
+      var left=r.amount||0;
+      open.forEach(function(x){ if(left>=x.it.amt-0.01){ paid.push(x); left-=x.it.amt; } else miss.push(x); });
+      note='The remittance lists no invoice numbers, so it is matched to the oldest invoices first — check the list before sending.';
+    }
+    var rows=miss.map(function(x){ var it=x.it; return {doc:it.doc, ext:it.ext, type:it.type, due:x.d, amt:it.amt, st:x.st, q:!!(qs[String(it.doc).toLowerCase()]||(it.ext&&qs[String(it.ext).toLowerCase()]))}; });
+    return {data:{kind:'invoices', rows:rows, credits:0}, total:round2(sum(rows,function(x){ return x.amt; })), paid:paid.map(function(x){ return x.it.doc; }), note:note, unknown:empty.unknown, c:c};
+  }
+  // no statement: compare amounts with the ledger
+  var owed=round2(c.overdue-(c.queryAmt||0)+(inclBecoming?dueBetween(c, t, rd):0));
+  var short=round2(owed-(r.amount||0));
+  if(short<=Math.max(1, num(settings().tiny))) return Object.assign(empty,{note:'The remittance covers what is overdue'+(inclBecoming?' and due by '+fmtD(rd):'')+'.'});
+  return {data:{kind:'periods', rows:[{doc:'Balance not covered by the remittance', ext:'', type:'Ledger', due:null, amt:short, st:'overdue', q:false, period:true}], credits:0}, total:short, paid:[], note:'No statement on file, so this is the amount still owed after the remittance. Attach the statement to list the invoices.', unknown:[], c:c};
+}
+// one line for the remittance card
+function remitMissingSummary(r){
+  if(!r.customer || r.status==='ignored') return '';
+  var c=custByName(r.customer); if(!c) return '';
+  var m=remitMissing(r, nextRunFor(c,today()), true);
+  if(!m.total && !m.unknown.length) return (hasStatement(c)&&m.paid.length)?'<div class="xs amt-ok" style="grid-column:1/-1">✓ Covers every overdue invoice on the statement</div>':'';
+  var n=m.data.rows.length;
+  return '<div class="sugg" style="grid-column:1/-1;justify-content:space-between"><span class="xs amt-warn">'+(m.total?(m.data.kind==='invoices'?n+' invoice'+(n===1?'':'s')+' overdue or due soon not on this remittance · ':'Still owed after this remittance · ')+'<b>'+money(m.total,c.currency)+'</b>':'')+
+    (m.unknown.length?' <span class="muted">· '+m.unknown.length+' invoice'+(m.unknown.length===1?'':'s')+' on the remittance not on the statement ('+esc(m.unknown.slice(0,3).join(', '))+')</span>':'')+(r.missingChasedAt?' <span class="muted">· chased '+relDays(new Date(r.missingChasedAt))+'</span>':'')+'</span>'+
+    (m.total?'<button class="btn btn-xs btn-p edit-only" onclick="openComposer('+jsArg(c.name)+',{remit:'+jsArg(r.id)+'})">Email about missing invoices</button>':'')+'</div>';
+}
+// every remittance with something missing → one Gmail draft each
+function bulkDraftMissing(){
+  var list=remits().filter(function(r){ return r.status!=='ignored' && r.customer && !r.missingChasedAt; }).map(function(r){ var c=custByName(r.customer); return c?{r:r, c:c, m:remitMissing(r, nextRunFor(c,today()), true)}:null; }).filter(function(x){ return x && x.m.total>0; });
+  if(!list.length){ toast('ok','Nothing missing','Every remittance covers what is overdue (or has been chased)'); return; }
+  var withMail=list.filter(function(x){ return contactFor(x.c); });
+  openModal('Email about invoices missing from remittances','<p>Creates a Gmail draft for <b>'+withMail.length+'</b> customer'+(withMail.length===1?'':'s')+' listing the invoices their remittance did not include. Nothing is sent — check each one in Gmail Drafts.</p><div class="small" style="max-height:220px;overflow:auto">'+list.map(function(x){ return '<div>'+esc(x.c.name)+' — '+money(x.m.total,x.c.currency)+(contactFor(x.c)?'':' <span class="amt-bad">(no email address — skipped)</span>')+'</div>'; }).join('')+'</div><div id="bulk-prog" class="muted small"></div>',
+    {foot:'<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-p" id="bulk-go">Create '+withMail.length+' drafts</button>'});
+  $('bulk-go').onclick=function(){
+    this.disabled=true;
+    Gmail.use(async function(){
+      var ok=0, fail=[];
+      for(var i=0;i<withMail.length;i++){
+        var x=withMail[i], c=x.c; setHTML('bulk-prog','Drafting '+(i+1)+' of '+withMail.length+' — '+esc(c.name)+'…');
+        try{
+          var run=nextRunFor(c,today()), f=await statementFileFor(c.name), mail=renderEmail(c, run, x.m.total, true, 'run', x.r);
+          await createDraft({to:contactFor(c), bcc:settings().bcc?FINANCE_BCC:'', subject:mail.subject, html:mail.html, text:mail.text, att:f&&f.b64?{b64:f.b64,name:f.fname||'Statement.pdf',mime:f.mime||'application/pdf'}:(c.stmt?statementPdf(c,run):null)});
+          logChase(c.name,{via:'gmail', subject:mail.subject, amount:x.m.total, run:run.id, to:contactFor(c), bulk:true, remit:x.r.id});
+          var ra=remits(), rr=ra.find(function(y){ return y.id===x.r.id; }); if(rr){ rr.missingChasedAt=new Date().toISOString(); saveRemits(ra); }
+          ok++;
+        }catch(e){ fail.push(c.name+': '+e.message); }
+      }
+      closeModal(); renderAll();
+      toast(fail.length?'warn':'ok', ok+' drafts created', fail.length?fail.length+' failed — '+fail[0]:'Review and send them from Gmail Drafts');
+    });
+  };
 }
 
 // ── 75-gmail.js ──
@@ -3924,17 +4020,18 @@ function ptpForm(name){
     {k:'date', label:'Date they promised', type:'date', v:p?p.date:ymd(c?expectedPayDate(c,null):addDays(today(),3))},
     {k:'amount', label:'Amount ('+(c?c.currency:'GBP')+')', type:'number', step:'0.01', v:p?p.amount:(c?round2(c.overdue-(c.queryAmt||0)):'')},
     {k:'note', label:'Note', type:'textarea', v:p?p.note:''}
-  ], function(v){ if(!v.date){ toast('warn','Pick a date',''); return false; } setPTP(name, fromYMD(v.date), v.amount, v.note); toast('ok','Promise logged', name+' — '+fmtD(fromYMD(v.date))); renderAll(); });
+  ], function(v){ if(!v.date){ toast('warn','Pick a date',''); return false; } var prev=getPTP(name); setPTP(name, fromYMD(v.date), v.amount, v.note); toast('ok','Promise logged', name+' — '+fmtD(fromYMD(v.date)), function(){ if(prev){ var o=ptps(); o[name]=prev; DB.set('nwi_ptp',o); } else clearPTP(name); renderAll(); toast('info','Promise undone',name); }); renderAll(); });
 }
 function paymentForm(name){
   var c=custByName(name);
   askForm('Payment received — '+name,[
     {k:'date', label:'Date received', type:'date', v:ymd(today())},
     {k:'amount', label:'Amount ('+(c?c.currency:'GBP')+')', type:'number', step:'0.01', v:getPTP(name)?getPTP(name).amount:''}
-  ], function(v){ if(!num(v.amount)){ toast('warn','Enter the amount',''); return false; } recordPayment(name, fromYMD(v.date), v.amount, c?c.currency:'GBP','manual'); toast('ok','Payment recorded', name+' '+money(v.amount,c?c.currency:'GBP')); renderAll(); });
+  ], function(v){ if(!num(v.amount)){ toast('warn','Enter the amount',''); return false; } if(!fromYMD(v.date)){ toast('warn','Pick the date',''); return false; } var rec=recordPayment(name, fromYMD(v.date), v.amount, c?c.currency:'GBP','manual'); toast('ok','Payment recorded', name+' '+money(v.amount,c?c.currency:'GBP'), function(){ removePayment(rec.id); restorePTP(name, rec.ptp); renderAll(); toast('info','Payment removed',name); }); renderAll(); });
 }
 function snoozeForm(name){
-  askForm('Snooze '+name,[{k:'date', label:'Hide from chase lists until', type:'date', v:ymd(addDays(today(),7))}], function(v){ setSnooze(name, v.date?fromYMD(v.date):null); renderAll(); });
+  var prevS=snoozes()[name]||null;
+  askForm('Snooze '+name,[{k:'date', label:'Hide from chase lists until (leave empty to un-snooze)', type:'date', v:prevS||ymd(addDays(today(),7))}], function(v){ setSnooze(name, v.date?fromYMD(v.date):null); toast('ok', v.date?'Snoozed until '+fmtD(fromYMD(v.date)):'Snooze removed', name, function(){ setSnooze(name, prevS?fromYMD(prevS):null); renderAll(); }); renderAll(); });
 }
 
 function tickDone(name, btn){
@@ -4486,7 +4583,8 @@ function renderRemits(){
   var list=all.filter(remitMatchesFilter);
   h+='<div class="card"><div class="card-h"><div class="seg">'+[['new','To confirm'],['unmatched','Unmatched'],['confirmed','Confirmed'],['ignored','Ignored'],['all','All']].map(function(s){ return '<button class="'+(RMF.status===s[0]?'on':'')+'" onclick="RMF.status='+jsArg(s[0])+';renderRemits()">'+s[1]+' <span class="muted">'+cnt[s[0]]+'</span></button>'; }).join('')+'</div>'+
     '<div class="acts"><input id="rm-q" style="width:200px;height:30px" placeholder="Find customer, amount, invoice…" value="'+esc(RMF.q)+'" oninput="RMF.q=this.value;remitList()">'+
-    (nw.some(function(r){ return r.customer && r.conf==='high' && r.amount>0; })?'<button class="btn btn-s edit-only" onclick="confirmAllMatched()">Confirm all high-confidence</button>':'')+'</div></div>'+
+    (nw.some(function(r){ return r.customer && r.conf==='high' && r.amount>0; })?'<button class="btn btn-s edit-only" onclick="confirmAllMatched()">Confirm all high-confidence</button>':'')+
+    '<button class="btn btn-s edit-only" onclick="bulkDraftMissing()" title="Draft an email to every customer whose remittance left out overdue invoices">Email all missing invoices</button></div></div>'+
     '<div class="card-b" id="rm-list"></div></div>'+custDatalist();
   // who still needs chasing on the live run
   var run=currentRun(), rows=run?runRows(run).filter(function(r){ return r.status==='chase'; }):[];
@@ -4532,6 +4630,7 @@ function remitCard(r){
     var sg=remitSuggest(r,3);
     h+='<div class="sugg edit-only"><span class="xs muted">'+(sg.length?'Could be:':'No likely match — use Choose customer.')+'</span>'+sg.map(function(x){ return '<button class="chip chip-btn" onclick="remitAssign('+jsArg(r.id)+','+jsArg(x.c.name)+')" title="'+esc(x.why)+'">'+esc(x.c.name)+' <span class="muted">· '+esc(x.why)+'</span></button>'; }).join('')+'</div>';
   }
+  h+=remitMissingSummary(r);
   if(r.snippet) h+='<details class="sugg" style="display:block"><summary class="xs muted" style="cursor:pointer">What the remittance says</summary><div class="xs" style="white-space:pre-wrap;margin-top:4px;max-height:160px;overflow:auto">'+esc(r.snippet)+'</div></details>';
   return h+'</div>';
 }
@@ -4853,6 +4952,11 @@ function setEmail(){
     '<label class="fld"><span>Subject</span><input id="tp-subj" value="'+esc(tpl.subject)+'"></label>'+
     '<label class="fld"><span>Body</span><textarea id="tp-body" rows="18" style="font-family:var(--mono);font-size:12.5px">'+esc(tpl.body)+'</textarea></label>'+
     '<div class="row"><button class="btn btn-p" onclick="saveSetting(\'template\',{subject:$(\'tp-subj\').value,body:$(\'tp-body\').value});toast(\'ok\',\'Template saved\',\'\')">Save template</button><button class="btn" onclick="saveSetting(\'template\',null);setEmail();toast(\'ok\',\'Template reset\',\'Back to your standard wording\')">Reset to standard</button><button class="btn" onclick="previewTemplate()">Preview with a real customer</button></div>');
+  var rt=remitTemplate();
+  h+=card('“Invoices not on the remittance” email','Used by “Email about missing invoices” on the Remittances page. Placeholders: {remitAmount} {remitDate} {missingWhat} {amount} {table} {signature} {customer}',
+    '<label class="fld"><span>Subject</span><input id="rt-subj" value="'+esc(rt.subject)+'"></label>'+
+    '<label class="fld"><span>Body</span><textarea id="rt-body" rows="12" style="font-family:var(--mono);font-size:12.5px">'+esc(rt.body)+'</textarea></label>'+
+    '<div class="row"><button class="btn btn-p" onclick="saveSetting(\'remitTemplate\',{subject:$(\'rt-subj\').value,body:$(\'rt-body\').value});toast(\'ok\',\'Template saved\',\'\')">Save template</button><button class="btn" onclick="saveSetting(\'remitTemplate\',null);setEmail();toast(\'ok\',\'Template reset\',\'\')">Reset to standard</button></div>');
   h+=card('Sender details','',
     '<div class="form-grid"><label class="fld"><span>Sign-off name</span><input value="'+esc(st.signature)+'" onchange="saveSetting(\'signature\',this.value)"></label>'+
     '<label class="chk" style="margin-top:24px"><input type="checkbox" '+(st.bcc?'checked':'')+' onchange="saveSetting(\'bcc\',this.checked)"> Bcc '+esc(FINANCE_BCC)+' on chase emails</label>'+
@@ -5044,8 +5148,9 @@ function boot(){
   document.addEventListener('click', function(e){ if(!e.target.closest('.search')) $('gsearch-res').classList.remove('open'); });
   document.addEventListener('keydown', function(e){
     var typing=/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||'') || (document.activeElement&&document.activeElement.isContentEditable);
-    if(e.key==='Escape'){ if($('modal').classList.contains('open')) closeModal(); else if(DRAWER) closeDrawer(); return; }
+    if(e.key==='Escape'){ var top=document.querySelector('.modal-top'); if(top){ top.remove(); return; } if($('modal').classList.contains('open')) closeModal(); else if(DRAWER) closeDrawer(); return; }
     if(typing||e.metaKey||e.ctrlKey||e.altKey||VIEWER) return;
+    if($('modal').classList.contains('open') || document.querySelector('.modal-top')) return;
     if(e.key==='/'){ e.preventDefault(); gs.focus(); }
     else if(e.key==='q'||e.key==='Q'){ e.preventDefault(); openQueryForm(); }
     else if(/^[1-8]$/.test(e.key)){ go(['today','runs','remits','queries','customers','forecast','reports','settings'][+e.key-1]); }
